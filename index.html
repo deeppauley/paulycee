@@ -106,10 +106,12 @@
       <p class="booking-kicker">BOSTON · CLUBS · WEDDINGS · PRIVATE EVENTS</p>
       <h2>LET'S MAKE<br><em>IT MOVE.</em></h2>
       <form id="booking-form">
+        <input type="text" name="_honey" class="honey" tabindex="-1" autocomplete="off" aria-hidden="true">
         <label><span>Your name</span><input name="name" required placeholder="Name"></label>
         <label><span>Your email</span><input name="email" type="email" required placeholder="Email address"></label>
         <label><span>Event details</span><textarea name="details" required placeholder="Date, city, venue, and what you're planning"></textarea></label>
         <button type="submit">SEND INQUIRY <span>↗</span></button>
+        <p class="form-status" role="status" aria-live="polite"></p>
       </form>
     </section>
   </main>

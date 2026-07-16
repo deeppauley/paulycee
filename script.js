@@ -31,12 +31,38 @@ document.querySelector('.close-player').addEventListener('click', closePlayer);
 modal.addEventListener('click', event => { if (event.target === modal) closePlayer(); });
 modal.addEventListener('cancel', event => { event.preventDefault(); closePlayer(); });
 
-document.querySelector('#booking-form').addEventListener('submit', event => {
+document.querySelector('#booking-form').addEventListener('submit', async event => {
   event.preventDefault();
-  const data = new FormData(event.currentTarget);
-  const subject = encodeURIComponent(`Booking inquiry for Pauly Cee — ${data.get('name')}`);
-  const body = encodeURIComponent(`Name: ${data.get('name')}\nEmail: ${data.get('email')}\n\nEvent details:\n${data.get('details')}`);
-  window.location.href = `mailto:?subject=${subject}&body=${body}`;
+  const form = event.currentTarget;
+  const button = form.querySelector('button[type="submit"]');
+  const status = form.querySelector('.form-status');
+  const data = Object.fromEntries(new FormData(form));
+  button.disabled = true;
+  button.firstChild.textContent = 'SENDING… ';
+  status.textContent = '';
+
+  try {
+    const response = await fetch('https://formsubmit.co/ajax/pauleyc@gmail.com', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({
+        name: data.name,
+        email: data.email,
+        'event details': data.details,
+        _subject: `New Pauly Cee booking inquiry — ${data.name}`,
+        _template: 'table',
+        _honey: data._honey
+      })
+    });
+    if (!response.ok) throw new Error('Submission failed');
+    form.reset();
+    status.textContent = 'Inquiry sent. Pauly will be in touch.';
+  } catch {
+    status.textContent = 'Something went wrong. Please try again in a moment.';
+  } finally {
+    button.disabled = false;
+    button.firstChild.textContent = 'SEND INQUIRY ';
+  }
 });
 
 document.querySelector('#year').textContent = new Date().getFullYear();
