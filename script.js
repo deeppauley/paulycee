@@ -66,3 +66,7 @@ document.querySelector('#booking-form').addEventListener('submit', async event =
 });
 
 document.querySelector('#year').textContent = new Date().getFullYear();
+
+if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+  document.querySelector('.rufus-video-wrap video')?.pause();
+}
