@@ -69,4 +69,13 @@ document.querySelector('#year').textContent = new Date().getFullYear();
 
 if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
   document.querySelector('.rufus-video-wrap video')?.pause();
+  document.querySelector('.noir-video')?.pause();
+} else {
+  const noirVideo = document.querySelector('.noir-video');
+  if (noirVideo) {
+    new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) noirVideo.play().catch(() => {});
+      else noirVideo.pause();
+    }, { threshold: 0.15 }).observe(noirVideo);
+  }
 }
