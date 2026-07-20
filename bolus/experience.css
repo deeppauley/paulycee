@@ -1,0 +1,23 @@
+.hero-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:contrast(1.07) saturate(.82)}
+.hero-sound{position:absolute;z-index:3;right:6vw;top:158px;border:1px solid var(--line);background:rgba(7,11,18,.52);backdrop-filter:blur(8px);color:var(--silver);display:flex;align-items:center;gap:10px;padding:10px 12px;cursor:pointer}
+.hero-sound i{width:8px;height:8px;border-radius:50%;background:var(--amber);box-shadow:0 0 12px var(--amber)}
+.hero-sound.muted i{background:transparent;border:1px solid var(--muted);box-shadow:none}
+.slider-film{position:relative;height:min(76vw,820px);min-height:520px;overflow:hidden;background:var(--void)}
+.slider-film video{width:100%;height:100%;display:block;object-fit:cover;filter:contrast(1.12) saturate(.92)}
+.slider-film:after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,var(--void) 0%,transparent 18%,transparent 80%,var(--void) 100%);pointer-events:none}
+.slider-film-frame{position:absolute;z-index:1;inset:6%;border:1px solid var(--line);pointer-events:none}
+.scene-archive{padding:110px 6vw 130px;background:var(--void);border-top:1px solid var(--line)}
+.scene-heading{display:flex;justify-content:space-between;align-items:end;margin:48px 0 64px}
+.scene-heading h2{font:600 clamp(56px,8vw,120px)/.8 var(--display);letter-spacing:-.07em;margin:0}
+.scene-heading h2 em{color:var(--amber);font-style:normal}
+.scene-heading p{max-width:310px;color:var(--muted);line-height:1.7;margin:0 0 8px}
+.scene-grid{display:grid;grid-template-columns:1fr 1fr;gap:clamp(20px,4vw,64px)}
+.scene-grid figure{margin:0}
+.scene-grid figure:nth-child(2){margin-top:10vw}
+.scene-image{position:relative;aspect-ratio:4/3;overflow:hidden;background:#0c121a}
+.scene-image:after{content:"";position:absolute;inset:0;border:1px solid #eef3f433;box-shadow:inset 0 0 80px #070b1266;pointer-events:none}
+.scene-image img{width:100%;height:100%;display:block;object-fit:cover;filter:saturate(.72) contrast(1.08);transition:filter .5s ease,transform .7s ease}
+.scene-grid figure:hover img{filter:saturate(1) contrast(1.04);transform:scale(1.018)}
+.scene-grid figcaption{display:flex;justify-content:space-between;gap:20px;padding-top:16px;color:var(--muted);font-size:10px;letter-spacing:.08em}
+.scene-grid figcaption strong{color:var(--silver);font-weight:500;text-align:right}
+@media(max-width:760px){.hero-sound{right:24px;top:132px}.scene-archive{padding:80px 24px}.scene-heading{display:block;margin:38px 0}.scene-heading p{margin-top:30px}.scene-grid{grid-template-columns:1fr}.scene-grid figure:nth-child(2){margin-top:24px}.scene-grid figcaption{font-size:9px}}
