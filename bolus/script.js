@@ -14,10 +14,23 @@ heroVideo.volume = .8;
 heroVideo.play().catch(() => {});
 updateSoundControl();
 
-soundToggle.addEventListener('click', () => {
-  soundEnabled = !soundEnabled;
-  heroVideo.muted = !soundEnabled;
-  heroVideo.play().catch(() => {});
+soundToggle.addEventListener('click', async () => {
+  if (!soundEnabled) {
+    heroVideo.removeAttribute('muted');
+    heroVideo.defaultMuted = false;
+    heroVideo.muted = false;
+    heroVideo.volume = 1;
+    try {
+      await heroVideo.play();
+      soundEnabled = true;
+    } catch {
+      heroVideo.muted = true;
+      soundEnabled = false;
+    }
+  } else {
+    heroVideo.muted = true;
+    soundEnabled = false;
+  }
   updateSoundControl();
 });
 
