@@ -1,0 +1,18 @@
+.kspace-collab{position:relative;min-height:780px;padding:10vw 8vw;display:grid;grid-template-columns:42% 1fr;align-items:center;gap:8vw;overflow:hidden;background:radial-gradient(circle at 24% 45%,#112b43 0,#07121e 32%,#05080d 68%);color:var(--paper);border-top:1px solid #4cb8e633;border-bottom:1px solid #4cb8e622}
+.kspace-orbit{position:relative;width:min(34vw,480px);aspect-ratio:1;border:1px solid #65cfff66;border-radius:50%;display:grid;place-items:center;box-shadow:0 0 80px #168dd922,inset 0 0 60px #168dd911}
+.kspace-orbit:before,.kspace-orbit:after,.kspace-orbit i{content:"";position:absolute;border:1px solid #dbe9ef33;border-radius:50%}
+.kspace-orbit:before{inset:14%;transform:rotate(28deg) scaleY(.54)}
+.kspace-orbit:after{inset:-10% 18%;transform:rotate(-32deg)}
+.kspace-orbit i:first-child{inset:30%;border-color:#65cfff99}
+.kspace-orbit i:nth-child(2){width:10px;height:10px;background:#65cfff;border:0;right:7%;top:26%;box-shadow:0 0 20px #65cfff}
+.kspace-orbit span{font:600 clamp(90px,13vw,190px)/1 "Unbounded",var(--sans);letter-spacing:-.12em;color:#e9f0f2;text-shadow:8px 8px 0 #168dcc55}
+.kspace-copy{position:relative;z-index:2;max-width:820px}
+.kspace-copy .section-index{color:#65cfff}
+.kspace-pair{margin:44px 0 20px;font:500 12px var(--mono);letter-spacing:.18em;color:#9fb0ba}
+.kspace-pair i{font-style:normal;color:#65cfff;margin:0 14px}
+.kspace-copy h2{margin:0;font:800 clamp(52px,6.8vw,112px)/.86 var(--sans);letter-spacing:-.065em}
+.kspace-copy h2 em{font-style:normal;color:#65cfff}
+.kspace-copy>p:not(.kspace-pair){max-width:620px;margin:42px 0;color:#aebbc2;font-size:17px;line-height:1.75}
+.kspace-link{display:inline-flex;align-items:center;gap:48px;padding:18px 20px;border:1px solid #65cfff88;color:#edf5f7;font:500 11px var(--mono);letter-spacing:.12em;transition:.25s ease}
+.kspace-link:hover{background:#65cfff;color:#06101a}
+@media(max-width:760px){.kspace-collab{min-height:0;padding:90px 24px;grid-template-columns:1fr;gap:70px}.kspace-orbit{width:min(76vw,360px);justify-self:center}.kspace-copy h2{font-size:13vw}.kspace-copy>p:not(.kspace-pair){font-size:15px}.kspace-pair{margin-top:36px}}
