@@ -3,6 +3,10 @@ const soundButton = document.querySelector('.sound-toggle');
 const modal = document.querySelector('.player-modal');
 const fullVideo = modal.querySelector('video');
 
+function trackEvent(name, parameters = {}) {
+  if (typeof window.gtag === 'function') window.gtag('event', name, parameters);
+}
+
 // Keep the atmospheric loop running when browsers restore a backgrounded tab.
 document.addEventListener('visibilitychange', () => {
   if (!document.hidden && !modal.open && heroVideo.paused) heroVideo.play().catch(() => {});
@@ -13,13 +17,19 @@ soundButton.addEventListener('click', () => {
   soundButton.classList.toggle('on', !heroVideo.muted);
   soundButton.querySelector('.sound-label').textContent = heroVideo.muted ? 'SOUND OFF' : 'SOUND ON';
   soundButton.setAttribute('aria-label', heroVideo.muted ? 'Turn ambient video sound on' : 'Turn ambient video sound off');
+  trackEvent('ambient_sound_toggle', { sound_state: heroVideo.muted ? 'off' : 'on' });
 });
 
 document.querySelectorAll('[data-open-player]').forEach(button => button.addEventListener('click', () => {
   heroVideo.pause();
   modal.showModal();
   fullVideo.play().catch(() => {});
+  trackEvent('full_set_play', { set_name: '36 Minutes in the Dark' });
 }));
+
+document.querySelector('.kspace-link')?.addEventListener('click', () => {
+  trackEvent('select_content', { content_type: 'artist_link', item_id: 'dj_bolus' });
+});
 
 function closePlayer() {
   fullVideo.pause();
@@ -57,6 +67,7 @@ document.querySelector('#booking-form').addEventListener('submit', async event =
     if (!response.ok) throw new Error('Submission failed');
     form.reset();
     status.textContent = 'Inquiry sent. Pauly will be in touch.';
+    trackEvent('generate_lead', { method: 'booking_form' });
   } catch {
     status.textContent = 'Something went wrong. Please try again in a moment.';
   } finally {
