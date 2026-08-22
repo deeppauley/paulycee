@@ -21,7 +21,7 @@ function updateRemixPlayer() {
   const progress = remixAudio.duration ? (remixAudio.currentTime / remixAudio.duration) * 100 : 0;
   remixSeek.value = progress;
   remixFill.style.width = `${progress}%`;
-  remixTime.textContent = `${formatTime(remixAudio.currentTime)} / ${formatTime(remixAudio.duration || 58)}`;
+  remixTime.textContent = `${formatTime(remixAudio.currentTime)} / ${formatTime(remixAudio.duration || 111)}`;
 }
 
 remixPlay.addEventListener('click', async () => {
