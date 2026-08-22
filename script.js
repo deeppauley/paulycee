@@ -2,10 +2,48 @@ const heroVideo = document.querySelector('.hero-video');
 const soundButton = document.querySelector('.sound-toggle');
 const modal = document.querySelector('.player-modal');
 const fullVideo = modal.querySelector('video');
+const remixAudio = document.querySelector('.remix-audio');
+const remixPlay = document.querySelector('.remix-play');
+const remixSeek = document.querySelector('.remix-seek');
+const remixFill = document.querySelector('.remix-wave-fill');
+const remixTime = document.querySelector('.remix-time');
 
 function trackEvent(name, parameters = {}) {
   if (typeof window.gtag === 'function') window.gtag('event', name, parameters);
 }
+
+function formatTime(seconds) {
+  if (!Number.isFinite(seconds)) return '0:00';
+  return `${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2, '0')}`;
+}
+
+function updateRemixPlayer() {
+  const progress = remixAudio.duration ? (remixAudio.currentTime / remixAudio.duration) * 100 : 0;
+  remixSeek.value = progress;
+  remixFill.style.width = `${progress}%`;
+  remixTime.textContent = `${formatTime(remixAudio.currentTime)} / ${formatTime(remixAudio.duration || 111)}`;
+}
+
+remixPlay.addEventListener('click', async () => {
+  if (remixAudio.paused) {
+    heroVideo.muted = true;
+    soundButton.classList.remove('on');
+    soundButton.querySelector('.sound-label').textContent = 'SOUND OFF';
+    await remixAudio.play().catch(() => {});
+    if (!remixAudio.paused) trackEvent('remix_preview_play', { track_name: "Movin' to the Sun", remix_artist: 'Pauly Cee' });
+  } else {
+    remixAudio.pause();
+  }
+});
+
+remixAudio.addEventListener('play', () => { remixPlay.classList.add('playing'); remixPlay.querySelector('span').textContent = 'Ⅱ'; });
+remixAudio.addEventListener('pause', () => { remixPlay.classList.remove('playing'); remixPlay.querySelector('span').textContent = '▶'; });
+remixAudio.addEventListener('timeupdate', updateRemixPlayer);
+remixAudio.addEventListener('loadedmetadata', updateRemixPlayer);
+remixAudio.addEventListener('ended', () => { remixAudio.currentTime = 0; updateRemixPlayer(); });
+remixSeek.addEventListener('input', () => {
+  if (remixAudio.duration) remixAudio.currentTime = (Number(remixSeek.value) / 100) * remixAudio.duration;
+});
 
 // Keep the atmospheric loop running when browsers restore a backgrounded tab.
 document.addEventListener('visibilitychange', () => {
@@ -21,6 +59,7 @@ soundButton.addEventListener('click', () => {
 });
 
 document.querySelectorAll('[data-open-player]').forEach(button => button.addEventListener('click', () => {
+  remixAudio.pause();
   heroVideo.pause();
   modal.showModal();
   fullVideo.play().catch(() => {});

@@ -18,8 +18,26 @@
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Manrope:wght@400;500;600&family=Unbounded:wght@700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css?v=20260719-1">
   <link rel="stylesheet" href="kspace.css?v=20260720-1">
+  <link rel="stylesheet" href="remix-player.css?v=20260822-1">
 </head>
 <body>
+  <aside class="remix-player" aria-label="Latest remix preview">
+    <audio class="remix-audio" preload="metadata">
+      <source src="assets/pauly-cee-movin-to-the-sun-remix-preview.mp3" type="audio/mpeg">
+    </audio>
+    <div class="remix-badge"><i></i><span>LATEST REMIX</span></div>
+    <button class="remix-play" type="button" aria-label="Play Movin' to the Sun remix preview"><span>▶</span></button>
+    <div class="remix-details">
+      <strong>MOVIN' TO THE SUN</strong>
+      <span>HUGEL · PAULY CEE REMIX <em>PREVIEW</em></span>
+    </div>
+    <div class="remix-wave">
+      <div class="remix-wave-fill"></div>
+      <input class="remix-seek" type="range" min="0" max="100" value="0" step="0.1" aria-label="Seek through remix preview">
+    </div>
+    <time class="remix-time">0:00 / 1:51</time>
+  </aside>
+
   <header class="nav" id="top">
     <a class="wordmark" href="#top" aria-label="Pauly Cee home">PC<span>•</span></a>
     <nav aria-label="Main navigation">
