@@ -13,10 +13,52 @@
     gtag('js', new Date());
     gtag('config', 'G-GVDRTEZZ6E');
   </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "MusicEvent",
+        "@id": "https://paulycee.com/#thai-festival",
+        "name": "Pauly Cee at Harvard Square Thai Festival",
+        "description": "Pauly Cee performs a live DJ set at the Harvard Square Thai Festival in Cambridge, Massachusetts.",
+        "startDate": "2026-10-03T16:30:00-04:00",
+        "endDate": "2026-10-03T18:30:00-04:00",
+        "previousStartDate": "2026-09-26T16:30:00-04:00",
+        "eventStatus": "https://schema.org/EventRescheduled",
+        "eventAttendanceMode": "https://schema.org/OfflineEventAttendanceMode",
+        "image": "https://paulycee.com/assets/pauly-cee-thai-festival.jpg",
+        "location": {
+          "@type": "Place",
+          "name": "Harvard Square",
+          "address": {"@type": "PostalAddress", "addressLocality": "Cambridge", "addressRegion": "MA", "addressCountry": "US"}
+        },
+        "performer": {"@type": "Person", "name": "Pauly Cee", "url": "https://paulycee.com"},
+        "url": "https://paulycee.com/#thai-festival"
+      },
+      {
+        "@type": "MusicEvent",
+        "@id": "https://paulycee.com/#halloween-event",
+        "name": "Halloween Party featuring Pauly Cee",
+        "description": "Pauly Cee performs at a Halloween party in Newburyport, Massachusetts.",
+        "startDate": "2026-10-30",
+        "eventStatus": "https://schema.org/EventScheduled",
+        "eventAttendanceMode": "https://schema.org/OfflineEventAttendanceMode",
+        "location": {
+          "@type": "Place",
+          "name": "Newburyport, Massachusetts",
+          "address": {"@type": "PostalAddress", "addressLocality": "Newburyport", "addressRegion": "MA", "addressCountry": "US"}
+        },
+        "performer": {"@type": "Person", "name": "Pauly Cee", "url": "https://paulycee.com"},
+        "url": "https://paulycee.com/#halloween-event"
+      }
+    ]
+  }
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Manrope:wght@400;500;600&family=Unbounded:wght@700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20260927-1">
+  <link rel="stylesheet" href="styles.css?v=20260929-1">
   <link rel="stylesheet" href="kspace.css?v=20260824-1">
   <link rel="stylesheet" href="remix-player.css?v=20260822-1">
 </head>
@@ -80,20 +122,33 @@
 
     <section class="upcoming-event" id="upcoming" aria-label="Upcoming Pauly Cee events">
       <div class="upcoming-head">
-        <div class="section-index">UPCOMING APPEARANCES / MASSACHUSETTS</div>
+        <div>
+          <div class="section-index">LIVE CALENDAR / MASSACHUSETTS</div>
+          <h2 class="events-heading">UPCOMING <em>EVENTS</em></h2>
+        </div>
         <span class="event-status"><i></i> UPCOMING</span>
+      </div>
+      <div class="event-directory" aria-label="Upcoming event schedule">
+        <article>
+          <time datetime="2026-10-03T16:30:00-04:00"><strong>OCT 03</strong><span>2026</span></time>
+          <div><h3>Harvard Square Thai Festival</h3><p>Harvard Square, Cambridge, MA · DJ set 4:30–6:30 PM</p></div>
+        </article>
+        <article>
+          <time datetime="2026-10-30"><strong>OCT 30</strong><span>2026</span></time>
+          <div><h3>Halloween Party</h3><p>Newburyport, MA · Featuring Pauly Cee</p></div>
+        </article>
       </div>
       <figure class="event-poster">
         <img src="assets/pauly-cee-thai-festival.jpg" alt="Pauly Cee event portrait for the Harvard Square Thai Festival">
         <figcaption>PAULY CEE / LIVE IN HARVARD SQUARE</figcaption>
       </figure>
-      <div class="event-date" aria-label="October 3, 2026">
+      <div class="event-date" id="thai-festival" aria-label="October 3, 2026">
         <span class="event-month">OCT</span>
         <strong>03</strong>
         <span class="event-year">2026</span>
       </div>
       <div class="event-details">
-        <p class="event-day">SATURDAY <span>04:30—06:30 PM</span></p>
+        <p class="event-day">SATURDAY <time datetime="2026-10-03T16:30:00-04:00">04:30—06:30 PM</time></p>
         <h2 id="upcoming-title">HARVARD SQUARE<br><em>THAI FESTIVAL</em></h2>
         <div class="event-meta">
           <p><span>LOCATION</span>Harvard Square<br>Cambridge, Massachusetts</p>
@@ -101,7 +156,7 @@
         </div>
         <p class="rain-note"><span>WEATHER UPDATE</span> Rescheduled from September 26 due to rain.</p>
       </div>
-      <article class="halloween-event" aria-labelledby="halloween-title">
+      <article class="halloween-event" id="halloween-event" aria-labelledby="halloween-title">
         <div class="halloween-art" aria-hidden="true">
           <span class="crescent"></span>
           <svg class="bats" viewBox="0 0 220 120">
@@ -112,7 +167,7 @@
           <span class="event-number">02</span>
         </div>
         <div class="halloween-copy">
-          <p>FRIDAY / OCTOBER 30 / 2026</p>
+          <p><time datetime="2026-10-30">FRIDAY / OCTOBER 30 / 2026</time></p>
           <h3 id="halloween-title">HALLOWEEN<br><em>PARTY</em></h3>
           <span>NEWBURYPORT, MASSACHUSETTS</span>
         </div>
