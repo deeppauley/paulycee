@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import {makePlan,grid,beatAt,sourceAt,gainAt} from '../mix.js';
+const t={id:'0',duration:180,intro:0,bpm:120,grids:[{time:0,bpm:120,beat:1},{time:60,bpm:128,beat:1}]};
+const gs=grid(t);for(const time of [0,1,59,60,61,179])assert.ok(Math.abs(sourceAt(gs,beatAt(gs,time))-time)<1e-8);
+const p=makePlan([t,{...t,id:'1',bpm:125,grids:[{time:0,bpm:125,beat:1}]}],{tempo:120,bars:16,sync:true});
+assert.equal(p[0].fadeOut,32);assert.equal(p[1].start,p[0].end-32);
+const mid=p[1].start+16;assert.ok(Math.abs(gainAt(p[0],mid)**2+gainAt(p[1],mid)**2-1)<1e-8);
+const natural=makePlan([{...t,bpm:0,grids:[]}],{tempo:120,bars:16,sync:true})[0];assert.equal(natural.synced,false);assert.equal(natural.duration,180);
+const serial=makePlan([t,{...t,id:'1'}],{tempo:120,bars:0,sync:false});assert.equal(serial[1].start,180);assert.equal(serial[1].fadeIn,0);
+console.log('PASS: variable-grid conversions, beat-aligned overlap, equal-power gains, unknown-BPM fallback, and sequential playback.');

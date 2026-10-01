@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="robots" content="noindex,nofollow"><meta name="referrer" content="no-referrer">
+  <meta name="theme-color" content="#090d17">
+  <link rel="manifest" href="manifest.webmanifest">
+  <title>Pauly Cee — Practice Room</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="refinements.css">
+</head>
+<body>
+  <header><a href="/" class="brand">PC<span>••</span></a><span>PRACTICE ROOM <small>PRIVATE LIBRARY</small></span><button id="lock" hidden>Lock library</button></header>
+  <main>
+    <section id="gate" class="gate">
+      <p class="kicker">YOUR MUSIC. YOUR REHEARSAL.</p><h1>Find your<br><em>next transition.</em></h1>
+      <p>Listen in playlist order, rehearse the handoffs, and shape a set from your phone or desktop.</p>
+      <form id="unlock-form"><label for="access-key">Library access key</label><div class="unlock-row"><input id="access-key" type="password" autocomplete="off" spellcheck="false" required placeholder="Paste your private access key"><button>Unlock</button></div></form>
+      <p class="fine">Your hosted library is encrypted. Keep your unlock link private. Imported files stay on this device.</p>
+      <button id="local-start" class="quiet">Start with files on this device</button>
+    </section>
+    <section id="room" hidden>
+      <div class="heading"><div><p class="kicker">REHEARSAL SESSION</p><h1 id="library-title">Your library</h1></div><button id="import-toggle">＋ Import music</button></div>
+      <div class="library-actions"><button id="save-offline" class="quiet">Save hosted tracks on this device</button><span class="fine">Tracks also cache as you listen.</span></div>
+      <div id="imports" class="panel" hidden>
+        <h2>Add music to this device</h2><p>Select audio files, then import a Rekordbox XML and an M3U8 playlist to add cues and restore playlist order. Files are saved in this browser when storage is available.</p>
+        <div class="import-grid"><label class="file-button">Audio files<input id="audio-files" type="file" accept="audio/*,.flac,.aiff,.aif,.wav,.m4a,.mp3" multiple></label><label class="file-button">Rekordbox XML<input id="xml-file" type="file" accept=".xml"></label><label class="file-button">M3U8 playlist<input id="playlist-file" type="file" accept=".m3u,.m3u8"></label></div>
+        <details class="publish-options"><summary>Publish imported tracks for my other devices</summary><p class="fine">Encrypt and upload your additions to your website. Owner access requires a GitHub fine-grained token scoped to deeppauley/paulycee with Contents: Read and write. The token is used for this upload only and is never saved. Publishing updates the hosted playlist and starts a website deployment.</p><label>GitHub repository token<input id="publish-token" type="password" autocomplete="off" spellcheck="false" placeholder="Repository-scoped token"></label><button id="publish-library">Encrypt &amp; publish imported tracks</button><p class="fine">Use MP3 or AAC files under 70 MB each. Your existing library key will unlock the added music on your other devices.</p></details>
+      </div>
+      <div class="decks">
+        <article class="deck" id="deck-a"><div class="deck-top"><span>DECK A</span><b class="deck-state">READY</b></div><h2>—</h2><p class="artist">Choose a track</p><div class="metrics"><span class="bpm">— BPM</span><span class="key">— KEY</span><span class="pitch">—</span></div><canvas aria-label="Deck A waveform" height="110"></canvas><div class="deck-time"><span class="position">0:00</span><span class="remaining">—</span></div><div class="cues"></div></article>
+        <article class="deck" id="deck-b"><div class="deck-top"><span>DECK B</span><b class="deck-state">READY</b></div><h2>—</h2><p class="artist">Next in your sequence</p><div class="metrics"><span class="bpm">— BPM</span><span class="key">— KEY</span><span class="pitch">—</span></div><canvas aria-label="Deck B waveform" height="110"></canvas><div class="deck-time"><span class="position">0:00</span><span class="remaining">—</span></div><div class="cues"></div></article>
+      </div>
+      <section class="mixer panel" aria-label="Mix controls">
+        <div class="transport"><button id="prev" aria-label="Previous track">⏮</button><button id="play" class="primary">▶ Play</button><button id="next" aria-label="Next track">⏭</button><button id="preview">Preview transition</button></div>
+        <div class="session-time"><span id="elapsed">0:00</span><input id="seek" type="range" min="0" max="100" value="0" step=".1" aria-label="Seek through session"><span id="total">0:00</span></div>
+        <div class="settings"><label>Session tempo<input id="tempo" type="number" min="60" max="180" step=".1" value="120"></label><label>Overlap<select id="bars"><option value="0">No overlap</option><option value="4">4 bars</option><option value="8">8 bars</option><option value="16" selected>16 bars</option><option value="32">32 bars</option></select></label><label class="check"><input id="sync" type="checkbox" checked> Beat sync</label><label>Volume<input id="volume" type="range" min="0" max="1" value=".8" step=".01"></label></div>
+        <p class="fine">Beat sync uses Rekordbox grids and changes playback speed and pitch together. Tracks without a beat grid crossfade at their original speed. Playback while the phone is locked or another app is open depends on your browser.</p>
+        <div class="mix-meter" aria-label="Automatic crossfade"><span>A</span><progress id="mix-progress" max="1" value="0"></progress><span>B</span><small id="mix-label">Automatic transitions</small></div>
+      </section>
+      <section class="track-editor panel"><div><p class="kicker">TRANSITION POINTS</p><h2 id="edit-title">Selected track</h2></div><div class="settings"><label>Start at cue<select id="in-cue"></select></label><label>Intro (seconds)<input id="intro" type="number" min="0" step=".01"></label><label>Outro end (seconds)<input id="outro" type="number" min="0" step=".01"></label><button id="save-points">Apply</button><button id="reset-points" class="quiet">Reset</button></div><p id="track-note" class="fine"></p></section>
+      <section class="queue panel"><div class="queue-head"><h2>Playlist <span id="count"></span></h2><input id="search" type="search" placeholder="Find a track" aria-label="Search playlist"></div><ol id="tracks"></ol></section>
+    </section>
+    <p id="status" role="status" aria-live="polite">Ready when you are.</p>
+  </main>
+  <script type="module" src="app.js"></script>
+</body></html>
