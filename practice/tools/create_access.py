@@ -6,4 +6,9 @@ if root in keyfile.parents:raise ValueError('Access files must be outside the re
 key=keyfile.read_text().strip();url='https://paulycee.com/practice/#key='+key
 (keyfile.parent/'Open Practice Room.url').write_text('[InternetShortcut]\nURL='+url+'\n')
 (keyfile.parent/'Private phone link.txt').write_text('Open this link on your phone or computer. Anyone with it can listen; keep it private.\n\n'+url+'\n\nAccess key (for manual unlock):\n'+key+'\n')
+try:
+    import qrcode
+    qrcode.make(url).save(keyfile.parent/'Private phone QR.png')
+except ImportError:
+    pass
 print('Private shortcut and phone link written beside the key. No key printed.')
