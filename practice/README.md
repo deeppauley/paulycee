@@ -4,6 +4,8 @@ Private practice player at `/practice/`. The main website has no link to it. Its
 
 ## Listen
 
+**iPhone screen-off listening:** choose **Background listening**, tap Play in Safari, then lock the screen. This mode uses a native audio element and Media Session track titles, play/pause, track skip and seeking controls (controls shown depend on iOS). It plays complete tracks sequentially at original speed; no live beat matching, overlaps or cue trims. It preloads the next compressed track and releases older decrypted Blob URLs. Encryption remains unchanged. iPhone/iPad default to this mode. Mix practice remains selectable for foreground transitions and is the only mode that requests screen wake lock. Real-device lock-screen playback and track handoffs still need verification on your iPhone; closing the tab, calls, other audio or OS memory pressure can interrupt playback.
+
 Open the private unlock link saved separately in **Desktop / Pauly Cee Practice Access**, or open `/practice/` and paste the access key. The 256-bit key is never sent to the hosting server: link fragments stay in the browser and are removed immediately after reading. No analytics or third-party scripts are loaded on this page. Anyone who receives the key can decrypt the hosted library; keep it private. Lock clears the in-memory key and playback buffers.
 
 Press Play for playlist-order playback. Select a track to edit its transition or press its play button to start there. Preview transition jumps to eight beats before the next overlap. Choose 0, 4, 8, 16, or 32 bars; short tracks cap overlap to a third of their duration. The waveforms and cue buttons seek within the set. Tempo/settings changes restart the current track. Pause resumes within an overlap.
