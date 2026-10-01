@@ -23,7 +23,7 @@ with sync_playwright() as pw:
     page.locator('#preview').click();page.wait_for_timeout(5000);print('PREVIEW_STATUS:',page.locator('#status').inner_text(),page.locator('#mix-label').inner_text(),flush=True);page.wait_for_function("document.querySelector('#mix-label').textContent.includes('Mixing')",timeout=60000)
     page.wait_for_timeout(1000);assert rms()>0.0001,'No overlap audio'
     assert page.locator('.deck-state').all_text_contents()==['PLAYING','PLAYING']
-    page.locator('#play').click();frozen=page.locator('#elapsed').inner_text();page.wait_for_timeout(1200);assert page.locator('#elapsed').inner_text()==frozen
+    page.locator('#play').click();page.wait_for_timeout(150);frozen=page.locator('#elapsed').inner_text();page.wait_for_timeout(1200);assert page.locator('#elapsed').inner_text()==frozen
     page.locator('#play').click();page.wait_for_timeout(2000);print('RESUME_STATUS:',page.locator('#status').inner_text());page.wait_for_function("document.querySelector('#play').textContent.includes('Pause')");assert rms()>0.0001
     page.locator('#next').click();page.wait_for_function("document.querySelector('#play').textContent.includes('Pause')",timeout=60000)
     page.locator('#play').click()
