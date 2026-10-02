@@ -12,7 +12,7 @@ with sync_playwright() as pw:
         page.locator('#unlock-form button').click()
     page.wait_for_selector('#room',state='visible')
     page.locator('#playback-mode').select_option('background')
-    assert page.locator('#preview').is_disabled()
+    assert page.locator('#preview').is_enabled()
     page.locator('#play').click()
     page.wait_for_function("document.querySelector('audio').currentTime>1",timeout=60000)
     assert page.evaluate("!!navigator.mediaSession.metadata.title")

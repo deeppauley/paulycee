@@ -186,7 +186,12 @@ $('#save-offline').onclick=async()=>{const button=$('#save-offline');button.disa
 $('#play').onclick=()=>playing?pause():play();
 $('#prev').onclick=()=>{const i=Math.max(0,activeIndex()-1);select(i);go(plan[i].start,true).catch(fail);};
 $('#next').onclick=()=>{const i=Math.min(plan.length-1,activeIndex()+1);select(i);go(plan[i].start,true).catch(fail);};
-$('#preview').onclick=()=>{const next=plan[selected+1];if(!next){status('Select a track with another track after it.');return;}go(Math.max(plan[selected].start,next.start-8*60/settings.tempo),true).catch(fail);};
+$('#preview').onclick=()=>{
+  const index=playing?activeIndex():selected;
+  if(!plan[index+1]){status('This is the last track. Choose an earlier track to preview a transition.');return;}
+  if(backgroundMode){$('#playback-mode').value='mix';setMode();}
+  select(index);go(plan[index+1].start,true).catch(fail);
+};
 $('#seek').onchange=e=>go(Number(e.target.value)).catch(fail);
 $('#volume').oninput=e=>{background.audio.volume=Number(e.target.value);if(master)master.gain.setTargetAtTime(Number(e.target.value),context.currentTime,.02);};
 function changeSettings(){const bpm=Number($('#tempo').value);if(bpm<60||bpm>180||!Number.isFinite(bpm)){status('Choose a tempo from 60 to 180 BPM.');return;}const was=playing;const index=activeIndex();pause();settings={tempo:bpm,bars:Number($('#bars').value),sync:$('#sync').checked};replan();select(selected);offset=plan[index]?.start||0;if(was)play();}
@@ -214,7 +219,7 @@ if('mediaSession'in navigator){
 }
 function setMode(){
   const index=activeIndex();pause();background.clear();buffers.clear();backgroundMode=$('#playback-mode').value==='background';
-  for(const id of ['#tempo','#bars','#sync','#preview','#save-points','#reset-points','#intro','#outro','#in-cue'])$(id).disabled=backgroundMode;
+  for(const id of ['#tempo','#bars','#sync','#save-points','#reset-points','#intro','#outro','#in-cue'])$(id).disabled=backgroundMode;
   $('.track-editor').hidden=backgroundMode;$('.mix-meter').hidden=backgroundMode;
   $('#mode-note').textContent=backgroundMode?'Screen-off listening: native audio, full tracks in playlist order. No beat matching or overlaps in this mode.':'Mix practice uses the live two-deck mixer. Keep this page open for reliable transitions.';
   replan();offset=plan[index]?.start||0;nativeIndex=index;lastDeckIds=['',''];select(index);

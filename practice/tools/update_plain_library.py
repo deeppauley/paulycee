@@ -20,14 +20,21 @@ def entries(path):
 
 def main():
     p=argparse.ArgumentParser()
-    for arg in ['playlist','previous-playlist','xml','key-file','output']:p.add_argument('--'+arg,required=True)
+    for arg in ['playlist','xml','output']:p.add_argument('--'+arg,required=True)
+    for arg in ['previous-playlist','key-file']:p.add_argument('--'+arg)
     p.add_argument('--write',action='store_true');a=p.parse_args()
-    out=pathlib.Path(a.output).resolve();key=base64.urlsafe_b64decode(pathlib.Path(a.key_file).read_text().strip()+'==')
+    out=pathlib.Path(a.output).resolve();plain=(out/'library.json').exists()
+    key=base64.urlsafe_b64decode(pathlib.Path(a.key_file).read_text().strip()+'==') if not plain else None
     def decrypt(path):
         data=path.read_bytes();return AESGCM(key).decrypt(data[:12],data[12:],None)
-    old=json.loads(decrypt(out/'library.bin'))['tracks'];previous=entries(a.previous_playlist)
-    if len(previous)!=len(old):raise ValueError('Previous playlist does not match encrypted library count')
-    bypath={norm(path):track for (path,_),track in zip(previous,old)}
+    if plain:
+        old=json.loads((out/'library.json').read_text(encoding='utf-8'))['tracks']
+        byfile={t['file']:t for t in old}
+        bypath={norm(path):byfile['track-'+hashlib.sha256(norm(path).encode()).hexdigest()[:20]+'.m4a'] for path,_ in entries(a.playlist) if 'track-'+hashlib.sha256(norm(path).encode()).hexdigest()[:20]+'.m4a' in byfile}
+    else:
+        old=json.loads(decrypt(out/'library.bin'))['tracks'];previous=entries(a.previous_playlist)
+        if len(previous)!=len(old):raise ValueError('Previous playlist does not match encrypted library count')
+        bypath={norm(path):track for (path,_),track in zip(previous,old)}
     updated=entries(a.playlist);missing=[path for path,_ in updated if norm(path) not in bypath and not pathlib.Path(path).is_file()]
     reuse=sum(norm(path) in bypath for path,_ in updated)
     print(f'{len(updated)} playlist entries; {reuse} reusable AAC files; {len(updated)-reuse} new entries; {len(missing)} missing sources.',flush=True)
@@ -43,7 +50,7 @@ def main():
         source,label=entry;identity=norm(source);oldtrack=bypath.get(identity)
         filename='track-'+hashlib.sha256(identity.encode()).hexdigest()[:20]+'.m4a'
         if oldtrack:
-            track=dict(oldtrack);audio=decrypt(out/oldtrack['file']);track['file']=filename
+            track=dict(oldtrack);audio=(out/oldtrack['file']).read_bytes() if plain else decrypt(out/oldtrack['file']);track['file']=filename
         else:
             t=metadata.get(identity)
             if t is None:
@@ -72,6 +79,6 @@ def main():
         if n:track['id']+=f'-repeat-{n}'
         result.append(track)
     (out/'library.json').write_text(json.dumps({'version':2,'encrypted':False,'name':pathlib.Path(a.playlist).stem,'tracks':result},ensure_ascii=False),encoding='utf-8')
-    print(f'Wrote {len(result)} ordered tracks, {len(unique)} audio files. Encrypted originals retained until verification.',flush=True)
+    print(f'Wrote {len(result)} ordered tracks, {len(unique)} audio files. Unused originals retained until verification.',flush=True)
 
 if __name__=='__main__':main()

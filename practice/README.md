@@ -4,11 +4,11 @@ Playlist rehearsal at `/practice/`. The page is unlinked from the homepage and m
 
 ## Listen
 
-Open `/practice/` and press Play; no key is required. Old unlock bookmarks still open the player and their obsolete key fragment is removed. `library/library.json` defines the playlist order and metadata; `.m4a` files contain browser-compatible AAC audio. The updated Thai Festival playlist contains 77 entries. Existing track IDs were retained where possible so device-local transition edits remain associated with the same songs.
+Open `/practice/` and press Play; no key is required. Old unlock bookmarks still open the player and their obsolete key fragment is removed. `library/library.json` defines the playlist order and metadata; `.m4a` files contain browser-compatible AAC audio. Thai Festival Playlist Final contains 81 entries. Existing track IDs were retained where possible so device-local transition edits remain associated with the same songs.
 
 **Background listening:** native audio plays complete tracks at original speed, sequentially, without beat matching, overlaps or cue trims. On iPhone, open in Safari, tap Play, then lock the screen. Media Session supplies titles, play/pause, skip and seeking actions; the controls shown depend on iOS. The next compressed track is preloaded; old Blob URLs are released. iPhone/iPad default to this mode. Real-device screen-lock handoffs still need testing on your phone. Calls, closing the tab, other audio and OS memory pressure can interrupt playback.
 
-**Mix practice:** Web Audio schedules beat-matched overlaps. Select a track and use Preview transition, or edit its intro/outro. Overlap choices are 0, 4, 8, 16 or 32 bars, capped for short songs. Beat sync is varispeed (pitch follows speed), not pitch-preserving key lock. Tracks without a grid play at original speed. Grid alignment does not guarantee compatible phrasing or vocals. This foreground mode requests screen wake lock where supported.
+**Mix practice:** Web Audio schedules beat-matched overlaps. **Jump to mix**, beside Play, seeks directly to the next transition after the currently playing track (or selected track while paused). Repeated taps during playback advance through successive transitions. It switches from background listening to mix practice when needed. With zero overlap it jumps to the next track boundary. The last track shows an explanatory message instead. Overlap choices are 0, 4, 8, 16 or 32 bars, capped for short songs. Beat sync is varispeed (pitch follows speed), not pitch-preserving key lock. Tracks without a grid play at original speed. Grid alignment does not guarantee compatible phrasing or vocals. This foreground mode requests screen wake lock where supported.
 
 ## Imports, offline listening and publishing
 

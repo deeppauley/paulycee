@@ -29,7 +29,15 @@ with sync_playwright() as pw:
     page.locator('#play').click();page.wait_for_function("document.querySelector('#play').textContent.includes('Pause')",timeout=60000)
     page.wait_for_function('''()=>{if(!window.audioProbe)return false;const a=new Float32Array(audioProbe.fftSize);audioProbe.getFloatTimeDomainData(a);return a.some(v=>Math.abs(v)>.001);}''')
     page.locator('#preview').click();page.wait_for_function("document.querySelector('#mix-label').textContent.includes('Mixing')",timeout=60000)
-    assert page.locator('.deck-state').all_text_contents()==['PLAYING','PLAYING']
+    page.wait_for_function("[...document.querySelectorAll('.deck-state')].every(el=>el.textContent==='PLAYING')")
+    page.locator('#preview').click()
+    page.wait_for_function("document.querySelector('#play').textContent.includes('Pause')")
+    page.wait_for_function('(name)=>document.querySelector("#deck-a h2").textContent===name',arg=tracks[2]['name'])
+    assert page.locator('#play').evaluate('(el)=>el.nextElementSibling.id')=='preview'
+    page.locator('#playback-mode').select_option('background')
+    page.locator('#preview').click()
+    page.wait_for_function("document.querySelector('#play').textContent.includes('Pause')")
+    assert page.locator('#playback-mode').input_value()=='mix'
     page.locator('#play').click()
     page.wait_for_function('navigator.serviceWorker.controller!==null')
     page.context.set_offline(True);page.reload();page.wait_for_selector('#room',state='visible')
