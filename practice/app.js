@@ -7,7 +7,7 @@ const basename=p=>{try{return decodeURIComponent(p).split(/[\\/]/).at(-1).toLowe
 let key=null, tracks=[],plan=[], selected=0, libraryName='',libraryVersion='',context,master,playing=false,offset=0,anchor=0,timer,epoch=0,busy=false,search='',wakeLock;
 const buffers=new Map(), pending=new Map(), voices=new Map();
 let settings={tempo:120,bars:16,sync:true}, overrides={};
-let backgroundMode=false,nativeIndex=0,metadataId='';
+let backgroundMode=false,nativeIndex=0,metadataId='',plainLibrary=false;
 const background=new BackgroundPlayer({read:readAudio,onended:()=>{
   if(!backgroundMode)return;
   if(nativeIndex+1<plan.length){go(plan[nativeIndex+1].start,true).catch(fail);}
@@ -25,6 +25,16 @@ async function storage(method,id,value){const db=await dbPromise;return new Prom
 async function keep(id,value){try{await storage('put',id,value);}catch{status('Playing normally. Browser storage is full or unavailable; this file will need to download again next time.');}}
 function audioContext(){if(!context){context=new AudioContext();master=context.createGain();master.gain.value=Number($('#volume').value);master.connect(context.destination);}return context;}
 async function decrypt(data){if(!key)throw Error('Unlock your library first.');return crypto.subtle.decrypt({name:'AES-GCM',iv:data.slice(0,12)},key,data.slice(12));}
+async function loadPlainLibrary(){
+  let data;
+  try{const response=await fetch('library/library.json',{cache:'no-cache'});if(!response.ok)throw Error('Playlist unavailable');data=await response.arrayBuffer();JSON.parse(new TextDecoder().decode(data));await keep('plain-manifest',data);}
+  catch{data=await storage('get','plain-manifest').catch(()=>null);if(!data)throw Error('Cannot load the playlist. Check your connection and reload.');}
+  const manifest=JSON.parse(new TextDecoder().decode(data));plainLibrary=true;
+  libraryVersion=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',data))).map(b=>b.toString(16).padStart(2,'0')).join('');
+  const imported=await storage('get','local-manifest').catch(()=>[])||[];
+  tracks=[...manifest.tracks,...imported.filter(t=>!manifest.tracks.some(h=>h.id===t.id))];libraryName=manifest.name;settings.tempo=tracks.find(t=>t.bpm)?.bpm||120;
+  $('#tempo').value=settings.tempo;$('#lock').hidden=true;showRoom();status(`${manifest.tracks.length} playlist tracks ready. No access key needed.`);
+}
 async function unlock(value){
   const clean=value.trim();if(!/^[A-Za-z0-9_-]{43}$/.test(clean))throw Error('Paste the complete 43-character library key.');
   const bytes=Uint8Array.from(atob(clean.replace(/-/g,'+').replace(/_/g,'/')+'='),c=>c.charCodeAt(0));
@@ -48,10 +58,10 @@ function stopNodes(){for(const v of voices.values()){try{v.source.stop();}catch{
 function pause(){offset=currentTime();playing=false;epoch++;background.audio.pause();stopNodes();clearInterval(timer);$('#play').textContent='▶ Play';if(wakeLock){wakeLock.release().catch(()=>{});wakeLock=null;}if('mediaSession'in navigator)navigator.mediaSession.playbackState='paused';}
 async function readAudio(track){
   if(track.local){const blob=await storage('get','local:'+track.id);if(!blob)throw Error('Audio missing from this browser. Import the file again.');return blob;}
-  const cacheId='audio:'+libraryVersion+':'+track.file;
+  const cacheId=plainLibrary?'plain-audio:'+track.file:'audio:'+libraryVersion+':'+track.file;
   let encrypted=await storage('get',cacheId).catch(()=>null);
   if(!encrypted){const r=await fetch('library/'+track.file);if(!r.ok)throw Error(`Download failed for “${track.name}”. Retry with a connection.`);encrypted=await r.arrayBuffer();await keep(cacheId,encrypted);}
-  const data=await decrypt(encrypted);
+  const data=plainLibrary?encrypted:await decrypt(encrypted);
   const signature=new TextDecoder().decode(data.slice(0,12));
   const mime=signature.slice(4,8)==='ftyp'?'audio/mp4':signature.startsWith('RIFF')?'audio/wav':signature.startsWith('fLaC')?'audio/flac':'audio/mpeg';
   return new Blob([data],{type:mime});
@@ -60,9 +70,7 @@ async function decode(track){
   if(buffers.has(track.id))return buffers.get(track.id);
   if(pending.has(track.id))return pending.get(track.id);
   const task=(async()=>{
-    let data;
-    if(track.local){const blob=await storage('get','local:'+track.id);if(!blob)throw Error('Audio missing from this browser. Import the file again.');data=await blob.arrayBuffer();}
-    else{const cacheId='audio:'+libraryVersion+':'+track.file;let encrypted=await storage('get',cacheId).catch(()=>null);if(!encrypted){const r=await fetch('library/'+track.file);if(!r.ok)throw Error(`Download failed for “${track.name}”. Retry with a connection.`);encrypted=await r.arrayBuffer();await keep(cacheId,encrypted);}data=await decrypt(encrypted);}
+    const data=await (await readAudio(track)).arrayBuffer();
     let buffer;try{buffer=await audioContext().decodeAudioData(data);}catch{throw Error(`This browser cannot decode “${track.name}”. Try MP3 or AAC audio.`);}
     buffers.set(track.id,buffer);return buffer;
   })();pending.set(track.id,task);try{return await task;}finally{pending.delete(track.id);}
@@ -173,8 +181,8 @@ $('#unlock-form').onsubmit=async e=>{e.preventDefault();const b=e.currentTarget.
 $('#lock').onclick=()=>{pause();background.clear();key=null;tracks=[];plan=[];buffers.clear();metadataId='';if('mediaSession'in navigator){navigator.mediaSession.metadata=null;navigator.mediaSession.playbackState='none';}$('#room').hidden=true;$('#gate').hidden=false;$('#lock').hidden=true;status('Library locked.');};
 $('#local-start').onclick=async()=>{tracks=await storage('get','local-manifest').catch(()=>[])||[];libraryName='On this device';showRoom();$('#imports').hidden=false;};
 $('#import-toggle').onclick=()=>$('#imports').hidden=!$('#imports').hidden;
-$('#publish-library').onclick=async()=>{const button=$('#publish-library');button.disabled=true;try{await publishLibrary({token:$('#publish-token').value,key,tracks,name:libraryName,libraryVersion,readFile:id=>storage('get','local:'+id),status});status('Encrypted additions published. Wait for deployment, then unlock the library on your other device.');}catch(e){status(e.message);}finally{$('#publish-token').value='';button.disabled=false;}};
-$('#save-offline').onclick=async()=>{const button=$('#save-offline');button.disabled=true;try{const hosted=tracks.filter(t=>!t.local);if(!hosted.length)throw Error('Imported tracks are already saved on this device.');if(navigator.storage?.persist)await navigator.storage.persist();for(let i=0;i<hosted.length;i++){status(`Saving encrypted audio ${i+1}/${hosted.length} for this device…`);const t=hosted[i],id='audio:'+libraryVersion+':'+t.file;if(!await storage('get',id)){const r=await fetch('library/'+t.file);if(!r.ok)throw Error('Download failed. Retry to continue saving.');await storage('put',id,await r.arrayBuffer());}}status('Library saved on this device. Keep your access key for unlocking offline.');}catch(e){status(e.message+' Browser storage may be limited; already saved tracks are retained.');}finally{button.disabled=false;}};
+$('#publish-library').onclick=async()=>{const button=$('#publish-library');button.disabled=true;try{await publishLibrary({token:$('#publish-token').value,key,plain:plainLibrary,tracks,name:libraryName,libraryVersion,readFile:id=>storage('get','local:'+id),status});status('Additions published. Wait for deployment, then reload on your other device.');}catch(e){status(e.message);}finally{$('#publish-token').value='';button.disabled=false;}};
+$('#save-offline').onclick=async()=>{const button=$('#save-offline');button.disabled=true;try{const hosted=tracks.filter(t=>!t.local);if(!hosted.length)throw Error('Imported tracks are already saved on this device.');if(navigator.storage?.persist)await navigator.storage.persist();for(let i=0;i<hosted.length;i++){status(`Saving audio ${i+1}/${hosted.length} for this device…`);const t=hosted[i],id=plainLibrary?'plain-audio:'+t.file:'audio:'+libraryVersion+':'+t.file;if(!await storage('get',id)){const r=await fetch('library/'+t.file);if(!r.ok)throw Error('Download failed. Retry to continue saving.');await storage('put',id,await r.arrayBuffer());}}status('Library saved on this device for offline listening.');}catch(e){status(e.message+' Browser storage may be limited; already saved tracks are retained.');}finally{button.disabled=false;}};
 $('#play').onclick=()=>playing?pause():play();
 $('#prev').onclick=()=>{const i=Math.max(0,activeIndex()-1);select(i);go(plan[i].start,true).catch(fail);};
 $('#next').onclick=()=>{const i=Math.min(plan.length-1,activeIndex()+1);select(i);go(plan[i].start,true).catch(fail);};
@@ -214,6 +222,7 @@ function setMode(){
 }
 $('#playback-mode').onchange=setMode;
 if(/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1)){$('#playback-mode').value='background';setMode();}
-const fragment=new URLSearchParams(location.hash.slice(1));let linkKey=fragment.get('key');fragment.delete('key');
-if(linkKey){history.replaceState(null,'',location.pathname);const unlocked=unlock(linkKey);linkKey=null;unlocked.catch(e=>status(e.message));}
+// Old private bookmarks still work, but their obsolete key must not linger in the URL.
+if(new URLSearchParams(location.hash.slice(1)).has('key'))history.replaceState(null,'',location.pathname);
+loadPlainLibrary().catch(e=>status(e.message));
 if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});

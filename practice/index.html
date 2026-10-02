@@ -10,13 +10,13 @@
   <link rel="stylesheet" href="refinements.css">
 </head>
 <body>
-  <header><a href="/" class="brand">PC<span>••</span></a><span>PRACTICE ROOM <small>PRIVATE LIBRARY</small></span><button id="lock" hidden>Lock library</button></header>
+  <header><a href="/" class="brand">PC<span>••</span></a><span>PRACTICE ROOM <small>PLAYLIST REHEARSAL</small></span><button id="lock" hidden>Lock library</button></header>
   <main>
     <section id="gate" class="gate">
       <p class="kicker">YOUR MUSIC. YOUR REHEARSAL.</p><h1>Find your<br><em>next transition.</em></h1>
-      <p>Listen in playlist order, rehearse the handoffs, and shape a set from your phone or desktop.</p>
-      <form id="unlock-form"><label for="access-key">Library access key</label><div class="unlock-row"><input id="access-key" type="password" autocomplete="off" spellcheck="false" required placeholder="Paste your private access key"><button>Unlock</button></div></form>
-      <p class="fine">Your hosted library is encrypted. Keep your unlock link private. Imported files stay on this device.</p>
+      <p>Loading your playlist. No access key needed.</p>
+      <form id="unlock-form" hidden><label for="access-key">Library access key</label><div class="unlock-row"><input id="access-key" type="password" autocomplete="off" spellcheck="false"><button>Unlock</button></div></form>
+      <p class="fine">Hosted audio is unencrypted and accessible to anyone with its URL. Imported files stay on this device unless you publish them.</p>
       <button id="local-start" class="quiet">Start with files on this device</button>
     </section>
     <section id="room" hidden>
@@ -25,7 +25,7 @@
       <div id="imports" class="panel" hidden>
         <h2>Add music to this device</h2><p>Select audio files, then import a Rekordbox XML and an M3U8 playlist to add cues and restore playlist order. Files are saved in this browser when storage is available.</p>
         <div class="import-grid"><label class="file-button">Audio files<input id="audio-files" type="file" accept="audio/*,.flac,.aiff,.aif,.wav,.m4a,.mp3" multiple></label><label class="file-button">Rekordbox XML<input id="xml-file" type="file" accept=".xml"></label><label class="file-button">M3U8 playlist<input id="playlist-file" type="file" accept=".m3u,.m3u8"></label></div>
-        <details class="publish-options"><summary>Publish imported tracks for my other devices</summary><p class="fine">Encrypt and upload your additions to your website. Owner access requires a GitHub fine-grained token scoped to deeppauley/paulycee with Contents: Read and write. The token is used for this upload only and is never saved. Publishing updates the hosted playlist and starts a website deployment.</p><label>GitHub repository token<input id="publish-token" type="password" autocomplete="off" spellcheck="false" placeholder="Repository-scoped token"></label><button id="publish-library">Encrypt &amp; publish imported tracks</button><p class="fine">Use MP3 or AAC files under 70 MB each. Your existing library key will unlock the added music on your other devices.</p></details>
+        <details class="publish-options"><summary>Publish imported tracks for my other devices</summary><p class="fine">Upload audio without encryption. Published files can be downloaded by anyone with their URL. Owner access requires a GitHub fine-grained token scoped to deeppauley/paulycee with Contents: Read and write. The token is used for this upload only and is never saved. Publishing updates the hosted playlist and starts a website deployment.</p><label>GitHub repository token<input id="publish-token" type="password" autocomplete="off" spellcheck="false" placeholder="Repository-scoped token"></label><button id="publish-library">Publish imported tracks</button><p class="fine">Use MP3 or AAC files under 70 MB each. Only publish audio you have permission to host publicly.</p></details>
       </div>
       <div class="decks">
         <article class="deck" id="deck-a"><div class="deck-top"><span>DECK A</span><b class="deck-state">READY</b></div><h2>—</h2><p class="artist">Choose a track</p><div class="metrics"><span class="bpm">— BPM</span><span class="key">— KEY</span><span class="pitch">—</span></div><canvas aria-label="Deck A waveform" height="110"></canvas><div class="deck-time"><span class="position">0:00</span><span class="remaining">—</span></div><div class="cues"></div></article>

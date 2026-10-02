@@ -1,4 +1,4 @@
-const CACHE='pauly-practice-shell-v2';
+const CACHE='pauly-practice-shell-v3';
 const SHELL=['./','index.html','app.js','background.js','mix.js','publish.js','style.css','refinements.css','icon.svg','manifest.webmanifest'];
 self.addEventListener('install',event=>event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(SHELL)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',event=>event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('pauly-practice-shell-')&&k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));

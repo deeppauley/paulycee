@@ -23,4 +23,8 @@ async function open(b){return new TextDecoder().decode(await crypto.subtle.decry
 assert.equal(await open(blobs[0]),'private audio bytes');assert.equal(blobs[0].includes(Buffer.from('private audio bytes')),false);
 const manifest=JSON.parse(await open(blobs[1]));assert.equal(manifest.tracks.length,2);assert.equal(manifest.tracks[1].local,undefined);assert.equal(manifest.tracks[1].filename,undefined);
 const before=blobs.length;await assert.rejects(()=>publishLibrary({...args,libraryVersion:'stale'}),/changed since you unlocked/);assert.equal(blobs.length,before);
-console.log('PASS: browser publishing encrypts audio and metadata, preserves existing files, rejects stale libraries, and never force-pushes. GitHub mocked; no live upload token used.');
+await publishLibrary({...args,key:null,plain:true});
+assert.equal(blobs.at(-2).toString(),'private audio bytes');
+assert.equal(JSON.parse(blobs.at(-1)).encrypted,false);
+assert.equal(JSON.parse(blobs.at(-1)).tracks[1].file.endsWith('.wav'),true);
+console.log('PASS: encrypted and plain publishing, preserved files, stale-library rejection, no force-push. GitHub mocked; no live upload token used.');
