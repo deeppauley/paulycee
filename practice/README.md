@@ -4,7 +4,7 @@ Playlist rehearsal at `/practice/`. The page is unlinked from the homepage and m
 
 ## Listen
 
-Open `/practice/` and press Play; no key is required. Old unlock bookmarks still open the player and their obsolete key fragment is removed. `library/library.json` defines the playlist order and metadata; `.m4a` files contain browser-compatible AAC audio. Thai Festival Playlist Final contains 81 entries. Existing track IDs were retained where possible so device-local transition edits remain associated with the same songs.
+Open `/practice/` and press Play; no key is required. Old unlock bookmarks still open the player and their obsolete key fragment is removed. `library/library.json` defines the playlist order and metadata; `.m4a` files contain browser-compatible AAC audio. Thai Festival Playlist Final 3 contains 92 entries. Existing track IDs were retained where possible so device-local transition edits remain associated with the same songs.
 
 **Background listening:** native audio plays complete tracks at original speed, sequentially, without beat matching, overlaps or cue trims. On iPhone, open in Safari, tap Play, then lock the screen. Media Session supplies titles, play/pause, skip and seeking actions; the controls shown depend on iOS. The next compressed track is preloaded; old Blob URLs are released. iPhone/iPad default to this mode. Real-device screen-lock handoffs still need testing on your phone. Calls, closing the tab, other audio and OS memory pressure can interrupt playback.
 
