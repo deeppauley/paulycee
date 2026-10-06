@@ -5,6 +5,7 @@
 .past-events{padding:7vw 8vw 8vw;background:#0b1019;border-top:1px solid #273140;scroll-margin-top:30px}
 .past-events-head{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;margin-bottom:4vw}
 .past-events-head .section-index{color:#97a9c1}
+.past-event-gallery{display:grid;grid-template-columns:minmax(0,2.154fr) minmax(0,1fr);gap:20px;align-items:start}
 .past-event-photo{margin:0;border:1px solid #33445e;background:#080b11}
 .past-event-photo a,.past-event-photo img{display:block;width:100%}
 .past-event-photo img{height:auto}
@@ -17,6 +18,7 @@
 .past-event-details p{font-size:14px;line-height:1.7;margin:0;color:#c1cbd8}
 .past-event-details .past-event-note{font-size:12px;color:#8796a9;margin-top:12px}
 @media(max-width:760px){
+  .past-event-gallery{grid-template-columns:minmax(0,1fr)}
   .past-events{padding:70px 24px}
   .past-events-head{display:block;margin-bottom:32px}
   .past-events-head>span{display:block;margin-top:24px}
