@@ -5,25 +5,27 @@
 .past-events{padding:7vw 8vw 8vw;background:#0b1019;border-top:1px solid #273140;scroll-margin-top:30px}
 .past-events-head{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;margin-bottom:4vw}
 .past-events-head .section-index{color:#97a9c1}
-.past-event-gallery{display:grid;grid-template-columns:minmax(0,2.154fr) minmax(0,1fr);gap:20px;align-items:start}
-.past-event-photo{margin:0;border:1px solid #33445e;background:#080b11}
-.past-event-photo a,.past-event-photo img{display:block;width:100%}
-.past-event-photo img{height:auto}
-.past-event-photo a:focus-visible{outline:3px solid #8fdcff;outline-offset:5px}
-.past-event-photo figcaption{padding:17px 20px;font:400 10px var(--mono);letter-spacing:.12em;color:#b5c8e4;line-height:1.6}
-.past-event-details{display:grid;grid-template-columns:170px 1fr;gap:3vw;padding-top:30px}
+.past-event-feature{position:relative;isolation:isolate;min-height:clamp(500px,42vw,650px);display:flex;align-items:flex-end;overflow:hidden;border:1px solid #33445e;background:#080b11}
+.past-event-backgrounds{position:absolute;inset:0;z-index:-2;display:grid;grid-template-columns:minmax(0,2.154fr) minmax(0,1fr);pointer-events:none}
+.past-event-backgrounds>div{background-size:cover;background-repeat:no-repeat}
+.festival-stage-background{background-image:url('assets/pauly-cee-thai-festival-stage.webp');background-position:58% center}
+.festival-closeup-background{background-image:url('assets/pauly-cee-thai-festival-closeup.webp');background-position:52% 30%;border-left:4px solid #0b1019}
+.past-event-feature:after{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;background:linear-gradient(0deg,rgba(3,7,14,.97),rgba(3,7,14,.78) 20%,rgba(3,7,14,.12) 60%,transparent)}
+.past-event-details{display:grid;grid-template-columns:130px 1fr;gap:24px;padding:40px;width:72%;text-shadow:0 2px 12px #000}
 .past-event-details time{font:500 22px var(--mono);color:#8fdcff}
 .past-event-details time span{display:block;margin-top:8px;font-size:12px;color:#97a9c1}
 .past-event-details h3{font-size:clamp(25px,3vw,44px);letter-spacing:-.04em;margin:0 0 14px;line-height:1.1}
-.past-event-details p{font-size:14px;line-height:1.7;margin:0;color:#c1cbd8}
-.past-event-details .past-event-note{font-size:12px;color:#8796a9;margin-top:12px}
+.past-event-details p{font-size:14px;line-height:1.7;margin:0;color:#e2e8f0}
+.past-event-details .past-event-note{font-size:12px;color:#b4c1d3;margin-top:12px}
 @media(max-width:760px){
-  .past-event-gallery{grid-template-columns:minmax(0,1fr)}
+  .past-event-feature{min-height:700px}
+  .past-event-backgrounds{grid-template-columns:minmax(0,1fr);grid-template-rows:220px 1fr}
+  .festival-stage-background{background-position:58% center}
+  .festival-closeup-background{border-left:0;border-top:4px solid #0b1019;background-position:center 25%}
   .past-events{padding:70px 24px}
   .past-events-head{display:block;margin-bottom:32px}
   .past-events-head>span{display:block;margin-top:24px}
-  .past-event-details{grid-template-columns:1fr;gap:22px}
+  .past-event-details{grid-template-columns:1fr;gap:18px;width:100%;padding:28px 22px}
   .past-event-details time span{display:inline;margin-left:12px}
-  .past-event-photo figcaption{padding:14px;font-size:9px}
   #upcoming .halloween-event{margin-top:32px}
 }
