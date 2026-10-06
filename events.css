@@ -1,0 +1,27 @@
+/* Keep the upcoming calendar separate from completed performances. */
+#upcoming{grid-template-rows:auto auto auto}
+#upcoming .event-directory{margin-bottom:0}
+#upcoming .halloween-event{margin-top:3vw}
+.past-events{padding:7vw 8vw 8vw;background:#0b1019;border-top:1px solid #273140;scroll-margin-top:30px}
+.past-events-head{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;margin-bottom:4vw}
+.past-events-head .section-index{color:#97a9c1}
+.past-event-photo{margin:0;border:1px solid #33445e;background:#080b11}
+.past-event-photo a,.past-event-photo img{display:block;width:100%}
+.past-event-photo img{height:auto}
+.past-event-photo a:focus-visible{outline:3px solid #8fdcff;outline-offset:5px}
+.past-event-photo figcaption{padding:17px 20px;font:400 10px var(--mono);letter-spacing:.12em;color:#b5c8e4;line-height:1.6}
+.past-event-details{display:grid;grid-template-columns:170px 1fr;gap:3vw;padding-top:30px}
+.past-event-details time{font:500 22px var(--mono);color:#8fdcff}
+.past-event-details time span{display:block;margin-top:8px;font-size:12px;color:#97a9c1}
+.past-event-details h3{font-size:clamp(25px,3vw,44px);letter-spacing:-.04em;margin:0 0 14px;line-height:1.1}
+.past-event-details p{font-size:14px;line-height:1.7;margin:0;color:#c1cbd8}
+.past-event-details .past-event-note{font-size:12px;color:#8796a9;margin-top:12px}
+@media(max-width:760px){
+  .past-events{padding:70px 24px}
+  .past-events-head{display:block;margin-bottom:32px}
+  .past-events-head>span{display:block;margin-top:24px}
+  .past-event-details{grid-template-columns:1fr;gap:22px}
+  .past-event-details time span{display:inline;margin-left:12px}
+  .past-event-photo figcaption{padding:14px;font-size:9px}
+  #upcoming .halloween-event{margin-top:32px}
+}
