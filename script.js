@@ -120,9 +120,9 @@ document.querySelector('#year').textContent = new Date().getFullYear();
 if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
   document.querySelector('.rufus-video-wrap video')?.pause();
   document.querySelector('.noir-video')?.pause();
+  document.querySelector('.festival-background-video')?.pause();
 } else {
-  const noirVideo = document.querySelector('.noir-video');
-  if (noirVideo) {
+  for (const noirVideo of document.querySelectorAll('.noir-video, .festival-background-video')) {
     new IntersectionObserver(([entry]) => {
       if (entry.isIntersecting) noirVideo.play().catch(() => {});
       else noirVideo.pause();
