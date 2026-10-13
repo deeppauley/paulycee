@@ -55,6 +55,22 @@
       },
       {
         "@type": "MusicEvent",
+        "@id": "https://paulycee.com/#asian-food-beer-festival",
+        "name": "Pauly Cee at Boston Asian Food & Beer Tasting Festival 2026",
+        "description": "Pauly Cee performs at the Boston Asian Food & Beer Tasting Festival at Boston City Hall Plaza on October 24, 2026. DJ set time is to be determined.",
+        "startDate": "2026-10-24",
+        "eventStatus": "https://schema.org/EventScheduled",
+        "eventAttendanceMode": "https://schema.org/OfflineEventAttendanceMode",
+        "location": {
+          "@type": "Place",
+          "name": "Boston City Hall Plaza",
+          "address": {"@type": "PostalAddress", "streetAddress": "1 City Hall Square", "addressLocality": "Boston", "addressRegion": "MA", "postalCode": "02201", "addressCountry": "US"}
+        },
+        "performer": {"@type": "Person", "name": "Pauly Cee", "url": "https://paulycee.com"},
+        "url": "https://www.eventbrite.com/e/boston-asian-food-beer-tasting-festival-2026-tickets-1985537470022"
+      },
+      {
+        "@type": "MusicEvent",
         "@id": "https://paulycee.com/#halloween-event",
         "name": "Halloween Party featuring Pauly Cee",
         "description": "Pauly Cee performs at a Halloween party in Newburyport, Massachusetts.",
@@ -76,7 +92,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Manrope:wght@400;500;600&family=Unbounded:wght@700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css?v=20260929-1">
-  <link rel="stylesheet" href="events.css?v=20261009-2">
+  <link rel="stylesheet" href="events.css?v=20261012-1">
   <link rel="stylesheet" href="hero-portrait.css?v=20261009-1">
   <link rel="stylesheet" href="kspace.css?v=20260824-1">
   <link rel="stylesheet" href="remix-player.css?v=20260822-1">
@@ -150,10 +166,24 @@
       </div>
       <div class="event-directory" aria-label="Upcoming event schedule">
         <article>
+          <time datetime="2026-10-24"><strong>OCT 24</strong><span>2026</span></time>
+          <div><h3><a href="#asian-food-beer-festival">Boston Asian Food &amp; Beer Tasting Festival</a></h3><p>Boston City Hall Plaza, Boston, MA · DJ set time: TBD</p></div>
+        </article>
+        <article>
           <time datetime="2026-10-30"><strong>OCT 30</strong><span>2026</span></time>
           <div><h3>Halloween Party</h3><p>Newburyport, MA · Featuring Pauly Cee</p></div>
         </article>
       </div>
+      <article class="festival-announcement" id="asian-food-beer-festival" aria-labelledby="asian-food-beer-title">
+        <div class="festival-announcement-date"><span>OCTOBER</span><strong>24</strong><span>2026 / SATURDAY</span></div>
+        <div class="festival-announcement-copy">
+          <p class="section-index">LIVE / PAULY CEE</p>
+          <h3 id="asian-food-beer-title">BOSTON ASIAN FOOD<br>&amp; <em>BEER TASTING FESTIVAL</em></h3>
+          <p>Boston City Hall Plaza<br>1 City Hall Square, Boston, MA</p>
+          <p class="festival-set-time">DJ SET TIME <strong>TBD</strong></p>
+          <a class="festival-ticket-link" href="https://www.eventbrite.com/e/boston-asian-food-beer-tasting-festival-2026-tickets-1985537470022" target="_blank" rel="noopener noreferrer">EVENT DETAILS &amp; TICKETS <span aria-hidden="true">↗</span></a>
+        </div>
+      </article>
       <article class="halloween-event" id="halloween-event" aria-labelledby="halloween-title">
         <div class="halloween-art" aria-hidden="true">
           <span class="crescent"></span>

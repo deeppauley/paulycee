@@ -2,6 +2,16 @@
 #upcoming{grid-template-rows:auto auto auto}
 #upcoming .event-directory{margin-bottom:0}
 #upcoming .halloween-event{margin-top:3vw}
+.festival-announcement{grid-column:1/-1;display:grid;grid-template-columns:.65fr 1.35fr;gap:5vw;margin-top:3vw;padding:5vw;border:1px solid #345789;background:radial-gradient(ellipse at 5% 25%,rgba(39,117,255,.2),transparent 60%),#0b111c;scroll-margin-top:30px}
+.festival-announcement-date{display:flex;flex-direction:column;justify-content:center;gap:24px;color:#8fdcff;font:500 12px var(--mono);letter-spacing:.14em}
+.festival-announcement-date strong{font:800 clamp(110px,15vw,220px)/.85 "Unbounded",var(--sans);letter-spacing:-.1em;color:#e9edf1}
+.festival-announcement-copy h3{font-size:clamp(26px,3.8vw,56px);line-height:1.04;letter-spacing:-.05em;margin:24px 0}
+.festival-announcement-copy h3 em{font-style:normal;color:#2775ff}
+.festival-announcement-copy>p:not(.section-index){font-size:14px;line-height:1.7;color:#c1cbd8}
+.festival-announcement-copy .festival-set-time{padding-top:18px;border-top:1px solid #34435c;letter-spacing:.1em;font-family:var(--mono);font-size:11px}
+.festival-set-time strong{margin-left:15px;color:#8fdcff}
+.festival-ticket-link{display:inline-flex;gap:28px;align-items:center;padding:16px 20px;margin-top:18px;border:1px solid #6085bc;font:500 11px var(--mono);letter-spacing:.08em}
+.festival-ticket-link:hover,.festival-ticket-link:focus-visible{background:#2775ff;color:white}
 .past-events{padding:7vw 8vw 8vw;background:#0b1019;border-top:1px solid #273140;scroll-margin-top:30px}
 .past-events-head{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;margin-bottom:4vw}
 .past-events-head .section-index{color:#97a9c1}
@@ -20,6 +30,11 @@
 .past-event-details p{font-size:14px;line-height:1.7;margin:0;color:#e2e8f0}
 .past-event-details .past-event-note{font-size:12px;color:#b4c1d3;margin-top:12px}
 @media(max-width:760px){
+  .festival-announcement{grid-template-columns:minmax(0,1fr);padding:32px 24px;gap:32px;margin-top:32px}
+  .festival-announcement-date{gap:16px}
+  .festival-announcement-date strong{font-size:110px}
+  .festival-announcement-copy h3{font-size:30px}
+  .festival-ticket-link{font-size:10px;padding:16px;gap:18px}
   .past-event-story{grid-template-columns:minmax(0,1fr)}
   .festival-photo-column{grid-template-rows:auto auto}
   .festival-stage-photo{aspect-ratio:1849/851}
