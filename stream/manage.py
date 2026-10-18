@@ -6,7 +6,7 @@ python stream/manage.py stop --state <PRIVATE DIRECTORY>
 import argparse,json,os,pathlib,re,shutil,subprocess,sys,time,urllib.parse,urllib.request
 
 def main():
-    p=argparse.ArgumentParser();p.add_argument('action',choices=['start','stop','status']);p.add_argument('--xml');p.add_argument('--preferred-xml');p.add_argument('--state',required=True);p.add_argument('--port',default=4190,type=int);a=p.parse_args()
+    p=argparse.ArgumentParser();p.add_argument('action',choices=['start','stop','status']);p.add_argument('--xml');p.add_argument('--preferred-xml');p.add_argument('--public',action='store_true');p.add_argument('--state',required=True);p.add_argument('--port',default=4190,type=int);a=p.parse_args()
     state=pathlib.Path(a.state).resolve();state.mkdir(parents=True,exist_ok=True);pidfile=state/'processes.json'
     processes=json.loads(pidfile.read_text()) if pidfile.exists() else {}
     if a.action=='status':
@@ -28,15 +28,16 @@ def main():
     serverlog=(state/'server.log').open('ab');tunnellog=(state/'tunnel.log').open('wb')
     command=[sys.executable,'-u',str(pathlib.Path(__file__).with_name('server.py')),'--xml',str(pathlib.Path(a.xml).resolve()),'--state',str(state),'--port',str(a.port)]
     if a.preferred_xml:command+=['--preferred-xml',str(pathlib.Path(a.preferred_xml).resolve())]
+    if a.public:command+=['--public']
     server=subprocess.Popen(command,stdin=subprocess.DEVNULL,stdout=serverlog,stderr=serverlog,creationflags=flags)
     processes={'server':server.pid};pidfile.write_text(json.dumps(processes))
     try:
         for _ in range(60):
             if server.poll() is not None:raise RuntimeError('PC server exited. See server.log in the private runtime folder.')
-            if (state/'access-key.txt').exists():
-                key=(state/'access-key.txt').read_text().strip()
+            if a.public or (state/'access-key.txt').exists():
+                key='' if a.public else (state/'access-key.txt').read_text().strip()
                 try:
-                    req=urllib.request.Request(f'http://127.0.0.1:{a.port}/library',headers={'Authorization':'Bearer '+key})
+                    req=urllib.request.Request(f'http://127.0.0.1:{a.port}/library',headers={} if a.public else {'Authorization':'Bearer '+key})
                     with urllib.request.urlopen(req,timeout=3) as r:catalog=json.load(r)
                     break
                 except Exception:pass
@@ -51,7 +52,7 @@ def main():
             if match:address=match[0];break
             time.sleep(.25)
         if not address:raise RuntimeError('HTTPS connection timed out. See tunnel.log.')
-        fragment=urllib.parse.urlencode({'server':address,'key':key})
+        fragment=urllib.parse.urlencode({'server':address} if a.public else {'server':address,'key':key})
         link='https://paulycee.com/stream/#'+fragment
         (state/'Open Stream Room.url').write_text('[InternetShortcut]\nURL='+link+'\n')
         (state/'Private phone link.txt').write_text(link)
@@ -63,6 +64,7 @@ def main():
         # Generated local shortcuts: credentials stay in the runtime folder.
         restart=f'& "{sys.executable}" "{pathlib.Path(__file__).resolve()}" stop --state "{state}"\n& "{sys.executable}" "{pathlib.Path(__file__).resolve()}" start --xml "{pathlib.Path(a.xml).resolve()}" --state "{state}"'
         if a.preferred_xml:restart+=f' --preferred-xml "{pathlib.Path(a.preferred_xml).resolve()}"'
+        if a.public:restart+=' --public'
         (state/'Restart Stream Server.ps1').write_text(restart+'\n')
         print(json.dumps({'server':address,'tracks':len(catalog['tracks']),'available':sum(t['available'] for t in catalog['tracks']),'playlists':len(catalog['playlists']),'private_access_files':str(state),'processes':processes}),flush=True)
     except Exception:

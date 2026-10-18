@@ -19,12 +19,12 @@ def library(xml):
     return {'name':pathlib.Path(xml).stem,'tracks':tracks,'playlists':playlists},paths
 
 def main():
-    p=argparse.ArgumentParser();p.add_argument('--xml',required=True);p.add_argument('--preferred-xml');p.add_argument('--state',required=True);p.add_argument('--port',type=int,default=4190);a=p.parse_args()
+    p=argparse.ArgumentParser();p.add_argument('--xml',required=True);p.add_argument('--preferred-xml');p.add_argument('--public',action='store_true');p.add_argument('--state',required=True);p.add_argument('--port',type=int,default=4190);a=p.parse_args()
     def current_xml():return a.preferred_xml if a.preferred_xml and pathlib.Path(a.preferred_xml).is_file() else a.xml
     state=pathlib.Path(a.state);state.mkdir(parents=True,exist_ok=True);cache=state/'audio-cache';cache.mkdir(exist_ok=True)
     keyfile=state/'access-key.txt'
-    if not keyfile.exists():keyfile.write_text(secrets.token_urlsafe(32))
-    key=keyfile.read_text().strip();catalog,paths=library(current_xml());lock=threading.Lock();semaphore=threading.BoundedSemaphore(2)
+    if not a.public and not keyfile.exists():keyfile.write_text(secrets.token_urlsafe(32))
+    key=keyfile.read_text().strip() if not a.public else '';catalog,paths=library(current_xml());lock=threading.Lock();semaphore=threading.BoundedSemaphore(2)
     origins={'https://paulycee.com','https://www.paulycee.com','http://127.0.0.1:4187','http://localhost:4187'}
     class Handler(BaseHTTPRequestHandler):
         def log_message(self,*args):pass # Never log access headers or audio requests.
@@ -39,7 +39,7 @@ def main():
         def do_GET(self):self.handle_request(False)
         def handle_request(self,head):
             if self.headers.get('Origin') and self.headers['Origin'] not in origins:self.send_error(403);return
-            if not hmac.compare_digest(self.headers.get('Authorization','').encode(),'Bearer '.encode()+key.encode()):self.send_error(401,'Access key required');return
+            if not a.public and not hmac.compare_digest(self.headers.get('Authorization','').encode(),'Bearer '.encode()+key.encode()):self.send_error(401,'Access key required');return
             route=urllib.parse.urlsplit(self.path).path
             if route=='/library':
                 try:
@@ -59,7 +59,7 @@ def main():
                 # MP3/M4A/WAV are served directly. Other formats become AAC on demand,
                 # cached outside the repository; nothing is uploaded to GitHub.
                 file=source;mime=mimetypes.guess_type(source.name)[0] or 'application/octet-stream'
-                if source.suffix.lower() not in {'.mp3','.m4a','.wav','.aac'}:
+                if source.suffix.lower() not in {'.mp3','.m4a','.aac'}:
                     file=cache/(fingerprint+'.m4a');mime='audio/mp4'
                     with semaphore:
                         if not file.exists():
@@ -88,7 +88,7 @@ def main():
                             self.wfile.write(chunk);remaining-=len(chunk)
             except (BrokenPipeError,ConnectionResetError):pass
             except Exception:self.send_error(503,'Audio preparation failed on the PC')
-    print(f'PC stream server on 127.0.0.1:{a.port}; {len(catalog["tracks"])} tracks, {sum(t["available"] for t in catalog["tracks"])} available. Access key saved outside repo.',flush=True)
+    print(f'PC stream server on 127.0.0.1:{a.port}; {len(catalog["tracks"])} tracks, {sum(t["available"] for t in catalog["tracks"])} available. Mode: {"public" if a.public else "private"}.',flush=True)
     ThreadingHTTPServer(('127.0.0.1',a.port),Handler).serve_forever()
 
 if __name__=='__main__':main()

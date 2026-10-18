@@ -1,20 +1,19 @@
-import {StreamMixer,gainAt} from './mixer.js';
+import {StreamMixer,gainAt} from './mixer.js?v=20261018-public';
 const $=s=>document.querySelector(s),status=t=>{$('#status').textContent=t;};
 const fmt=n=>{n=Math.max(0,Math.floor(n||0));return Math.floor(n/60)+':'+String(n%60).padStart(2,'0');};
-let server='',key='',catalog={tracks:[],playlists:[]},visible=[],favoriteOnly=false,query='',connected=false,lastIndex=-1,lastMetadata='',connecting=false,rowLimit=200;
+let server='',catalog={tracks:[],playlists:[]},visible=[],favoriteOnly=false,query='',connected=false,lastIndex=-1,lastMetadata='',connecting=false,rowLimit=200;
 let favorites=new Set();try{favorites=new Set(JSON.parse(localStorage.getItem('pauly-stream-favorites')||'[]'));}catch{}
 const requests=new Set();
 async function request(path,kind='json'){
   if(!connected&&path!='/library')throw Error('Connect to your PC first.');
   const controller=new AbortController();requests.add(controller);const timer=setTimeout(()=>controller.abort(),180000);
-  try{const response=await fetch(server+path,{headers:{Authorization:'Bearer '+key},signal:controller.signal,cache:'no-store',credentials:'omit',referrerPolicy:'no-referrer'});
-    if(response.status===401)throw Error('The access key was not accepted. Reconnect with your private link.');
+  try{const response=await fetch(server+path,{signal:controller.signal,cache:'no-store',credentials:'omit',referrerPolicy:'no-referrer'});
     if(response.status===404)throw Error('This audio file is missing from the PC. Reconnect its drive or relocate it in Rekordbox.');
     if(!response.ok)throw Error('PC server could not serve this request ('+response.status+').');return kind==='audio'?await response.arrayBuffer():await response.json();
   }catch(e){if(e instanceof TypeError)throw Error('Cannot reach your PC. Check that the server and secure connection are running and that the PC is awake.');if(e.name==='AbortError')throw Error('Connection cancelled or timed out. Try again.');throw e;}
   finally{clearTimeout(timer);requests.delete(controller);}
 }
-const mixer=new StreamMixer({load:track=>request('/audio/'+encodeURIComponent(track.id),'audio'),onchange:()=>update(),onerror:e=>status(e.message)});
+const mixer=new StreamMixer({url:track=>server+'/audio/'+encodeURIComponent(track.id),onchange:()=>update(),onerror:e=>status(e.message)});
 function saveFavorites(){try{localStorage.setItem('pauly-stream-favorites',JSON.stringify([...favorites]));}catch{status('Favorites cannot be saved in this browser.');}$('#favorite-count').textContent=favorites.size;}
 function toggleFavorite(id){if(!id)return;if(favorites.has(id))favorites.delete(id);else favorites.add(id);saveFavorites();renderRows();update();}
 function playlistTracks(){const chosen=$('#playlist').value;const byid=new Map(catalog.tracks.map(t=>[t.id,t]));const ids=chosen==='all'?catalog.tracks.map(t=>t.id):catalog.playlists.find(p=>p.id===chosen)?.tracks||[];return ids.map(id=>byid.get(id)).filter(Boolean).filter(t=>!favoriteOnly||favorites.has(t.id));}
@@ -61,20 +60,20 @@ async function connect(){
   try{
     const url=new URL($('#server').value.trim());if(url.username||url.password||url.search||url.hash)throw Error('Use only the server address, without credentials or query parameters.');
     const loopback=['127.0.0.1','localhost','[::1]'].includes(url.hostname);if(url.protocol!=='https:'&&!(url.protocol==='http:'&&loopback&&location.hostname==='127.0.0.1'))throw Error('Use an HTTPS server address for phone and live website access.');
-    server=url.origin;key=$('#key').value.trim();if(key.length<20)throw Error('Paste the complete private access key.');status('Reading your Rekordbox library…');
+    server=url.origin;status('Reading your Rekordbox library…');
     const data=await request('/library');if(!Array.isArray(data.tracks)||!Array.isArray(data.playlists))throw Error('The server did not return a Rekordbox library.');
     const previousPlaylist=$('#playlist').value;catalog=data;connected=true;$('#library-source').textContent='REKORDBOX / '+(catalog.name||'LIVE LIBRARY');$('#playlist').replaceChildren(new Option('Full collection','all'));
     for(const p of catalog.playlists)$('#playlist').add(new Option(p.name,p.id));
     if([...$('#playlist').options].some(p=>p.value===previousPlaylist))$('#playlist').value=previousPlaylist;
     const first=catalog.tracks.find(t=>t.available&&t.bpm>=60&&t.bpm<=180);$('#tempo').value=first?.bpm||120;
     $('#connect').hidden=true;$('#room').hidden=false;$('#disconnect').hidden=false;
-    try{sessionStorage.setItem('pauly-stream-connection',JSON.stringify({server,key}));}catch{}
-    $('#key').value='';applyPlaylist();status(`${catalog.tracks.length} tracks · ${catalog.playlists.length} playlists · ${catalog.tracks.filter(t=>!t.available).length} unavailable on PC. Favorites are saved on this browser.`);
+    try{sessionStorage.removeItem('pauly-stream-connection');}catch{}
+    applyPlaylist();status(`${catalog.tracks.length} tracks · ${catalog.playlists.length} playlists · ${catalog.tracks.filter(t=>!t.available).length} unavailable on PC. Favorites are saved on this browser.`);
   }catch(e){status(e.message);}finally{connecting=false;button.disabled=false;}
 }
 $('#connection').onsubmit=e=>{e.preventDefault();connect();};
-$('#disconnect').onclick=()=>{for(const r of requests)r.abort();mixer.clear();connected=false;key='';catalog={tracks:[],playlists:[]};$('#room').hidden=true;$('#connect').hidden=false;$('#disconnect').hidden=true;try{sessionStorage.removeItem('pauly-stream-connection');}catch{}if('mediaSession'in navigator){navigator.mediaSession.metadata=null;navigator.mediaSession.playbackState='none';}status('Disconnected. Your favorites are saved on this browser.');};
-$('#refresh').onclick=async()=>{if(mixer.loading){status('Wait for the current track to finish loading before refreshing.');return;}mixer.pause();$('#server').value=server;$('#key').value=key;await connect();};
+$('#disconnect').onclick=()=>{for(const r of requests)r.abort();mixer.clear();connected=false;catalog={tracks:[],playlists:[]};$('#room').hidden=true;$('#connect').hidden=false;$('#disconnect').hidden=true;if('mediaSession'in navigator){navigator.mediaSession.metadata=null;navigator.mediaSession.playbackState='none';}status('Disconnected. Your favorites are saved on this browser.');};
+$('#refresh').onclick=async()=>{if(mixer.loading){status('Wait for the current track to finish loading before refreshing.');return;}mixer.pause();$('#server').value=server;await connect();};
 $('#playlist').onchange=applyPlaylist;
 $('#favorites').onclick=()=>{favoriteOnly=!favoriteOnly;$('#favorites').setAttribute('aria-pressed',String(favoriteOnly));applyPlaylist();};
 $('#search').oninput=e=>{rowLimit=200;query=e.target.value.trim().toLowerCase();renderRows();};
@@ -89,7 +88,7 @@ $('#tempo').onchange=()=>{const tempo=Number($('#tempo').value);if(!Number.isFin
 $('#favorite-current').onclick=()=>toggleFavorite(mixer.plan[mixer.index()]?.track.id);
 if('mediaSession'in navigator)for(const [action,handler]of Object.entries({play:()=>mixer.play(),pause:()=>mixer.pause(),nexttrack:()=>$('#next').click(),previoustrack:()=>$('#previous').click()}))try{navigator.mediaSession.setActionHandler(action,handler);}catch{}
 setInterval(()=>{if(mixer.playing)update();},250);saveFavorites();update();
-const fragment=new URLSearchParams(location.hash.slice(1));let connection;
-if(fragment.has('key')){connection={key:fragment.get('key'),server:fragment.get('server')};history.replaceState(null,'',location.pathname);}
-else try{connection=JSON.parse(sessionStorage.getItem('pauly-stream-connection')||'null');}catch{}
-if(connection?.server&&connection?.key){$('#server').value=connection.server;$('#key').value=connection.key;connection=null;connect();}
+const fragment=new URLSearchParams(location.hash.slice(1));
+if(fragment.has('key'))history.replaceState(null,'',location.pathname);
+const configuration=fragment.has('server')?Promise.resolve({server:fragment.get('server')}):fetch('connection.json',{cache:'no-store'}).then(r=>{if(!r.ok)throw Error('No server configured.');return r.json();});
+configuration.then(c=>{$('#server').value=c.server;return connect();}).catch(()=>status('The music server is offline. Try connecting again shortly.'));

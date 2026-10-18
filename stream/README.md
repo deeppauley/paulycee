@@ -1,26 +1,26 @@
 # Stream Room
 
-Static portal at `https://paulycee.com/stream/`, backed by a server on the owner's Windows PC. No tracks, XML exports, connection keys or private library metadata are committed to Git. The site fetches the catalog and audio only from the PC server after connecting with a private key.
+Public portal at `https://paulycee.com/stream/`, backed by a server on the owner's Windows PC. No tracks or XML exports are committed to Git. `connection.json` supplies the public HTTPS endpoint; visitors connect automatically without a key. The catalog and audio are public while the PC server is running.
 
 ## Start
 
 Requires Python 3.11+, FFmpeg/ffprobe on PATH, and cloudflared. No third-party Python package is required for the server; `qrcode` optionally generates a private phone QR.
 
 ```
-python stream/manage.py start --xml "C:\Users\paule\Documents\Rekordbox Inbox.xml" --preferred-xml "C:\Users\paule\Documents\Rekordbox Full Library.xml" --state "C:\Users\paule\Desktop\Pauly Cee Stream Server"
+python stream/manage.py start --xml "C:\Users\paule\Desktop\fullRBexport.xml" --state "C:\Users\paule\Desktop\Pauly Cee Stream Server" --public
 ```
 
-The manager starts hidden processes bound to localhost plus an outbound HTTPS Quick Tunnel. Open **Open Stream Room.url** or scan **Private phone QR.png** from the private runtime folder. Keep these files private: the link contains the server's access key. The website removes the fragment after reading it and retains the connection only for the current browser session. Audio and library routes require Bearer authentication. CORS restricts browser callers to paulycee.com and local development on port 4187. No arbitrary paths or directory listings are served.
+The manager starts hidden processes bound to localhost plus an outbound HTTPS Quick Tunnel. Public mode requires no credentials. Generated connection shortcuts include only the endpoint address. CORS permits paulycee.com and local development on port 4187. Only track IDs listed in the XML are served; there are no directory listings or arbitrary file paths. The optional server private mode remains available when launched without `--public`, but the public website does not display a key field.
 
-The preferred full XML takes over on the next **Refresh library** once the file exists. The original Inbox XML can be used as temporary test data. Export via Rekordbox **File → Export Collection in xml format** to include the collection and playlist hierarchy. Existing files remain in their original locations; missing local files are displayed but skipped in playback queues. Tracks available only through third-party streaming subscriptions have no local audio to serve.
+Press **Refresh library** after replacing the configured XML. Export via Rekordbox **File → Export Collection in xml format** to include the collection and playlist hierarchy. Existing files remain in their original locations; missing local files are displayed but skipped in playback queues. Tracks available only through third-party streaming subscriptions have no local audio to serve.
 
 ## Playback
 
 Select a playlist or the full collection, search, and start a track. The queued order follows the playlist; search filters displayed results without changing playback order. Hearts save favorites in localStorage on that browser. Favorites view filters the selected playlist; choose Full collection to browse all saved favorites. Favorites do not currently sync across devices.
 
-The mixer uses the first playable track's BPM as the session tempo (editable). It aligns the first full downbeat of each track and the last complete bar of its outro, overlapping the final 32 complete beats with the next track's first 32 beats using equal-power fades. Tempo markers are followed, including changes within tracks. This is varispeed, so pitch changes with speed; it is not time-stretch key lock. Short clips use a shorter overlap, and missing grids fall back to natural-speed timed crossfades. The app buffers the current and next track in browser memory; audio is not stored for offline listening. Keep the page open for reliable mixing. Mobile screen-lock Web Audio behavior is not guaranteed.
+The mixer uses the first playable track's BPM as the session tempo (editable). It aligns the first full downbeat of each track and the last complete bar of its outro, overlapping the final 32 complete beats with the next track's first 32 beats using equal-power fades. Two native audio elements stream with browser buffering, routed through Web Audio gains; no full-track PCM decoding or in-memory audio buffers are used. The media playheads are aligned to a shared beat clock, with gain automation on the AudioContext clock. Media startup timing is browser-dependent, so this is a rehearsal mixer rather than sample-accurate DJ software. Tempo markers are followed, including changes within tracks. This is varispeed, so pitch changes with speed. Short clips use a shorter overlap, and missing grids fall back to natural-speed timed crossfades. Failed preloads are isolated from current playback. Keep the page open for reliable mixing; mobile screen-lock behavior is not guaranteed.
 
-MP3/M4A/WAV/AAC are served directly with HTTP byte ranges. Other formats transcode to stereo AAC on demand in the private runtime folder, never the repo. The PC must stay awake with its source drives connected. Upload speed limits remote playback; the next track is fetched ahead of the overlap. Codec support depends on the browser. Incompatible M4A codecs may need manual conversion.
+MP3/M4A/AAC are served directly with HTTP byte ranges. WAV and other formats transcode to stereo AAC on demand in the runtime folder, never the repo, to avoid transferring huge lossless originals. The PC must stay awake with its source drives connected. Upload speed limits remote playback; the next track is buffered ahead of the overlap. Codec support depends on the browser. Incompatible M4A codecs may need manual conversion.
 
 ## Stop and restart
 
@@ -29,6 +29,6 @@ python stream/manage.py status --state "C:\Users\paule\Desktop\Pauly Cee Stream 
 python stream/manage.py stop --state "C:\Users\paule\Desktop\Pauly Cee Stream Server"
 ```
 
-Run **Restart Stream Server.ps1** from the runtime folder to restart. A Quick Tunnel is temporary and gets a different address after restart. Open the newly generated private link on each device. No system startup task or power settings are changed. For a permanent hostname/reboot recovery, a named tunnel needs account setup later.
+Run **Restart Stream Server.ps1** from the runtime folder to restart. A Quick Tunnel gets a different address after restart. Update the site's `stream/connection.json` and deploy it to keep the plain `/stream/` URL working, or use the generated shortcut's `#server=` override immediately. No system startup task or power settings are changed. A permanent hostname requires a named tunnel account setup later.
 
 The backend and manager are source utilities and are not launched by GitHub Pages. Public site deployment includes only app code in `stream/`; runtime metadata and audio stay outside the checkout. Existing `/practice/` content is a separate earlier library and is not used by Stream Room.

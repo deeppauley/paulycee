@@ -33,7 +33,7 @@ def main():
             assert len(catalog['tracks'])==2;assert all(t['available'] for t in catalog['tracks']);assert catalog['playlists'][0]['tracks']==['1002','1001'];assert catalog['playlists'][0]['name']=='Folder / Test playlist'
             assert 'Location' not in json.dumps(catalog) and str(root) not in json.dumps(catalog)
             with get('/audio/1001',{'Range':'bytes=0-43','Origin':'https://paulycee.com'}) as response:
-                assert response.status==206;assert response.read()[:4]==b'RIFF';assert response.headers['Content-Length']=='44';assert response.headers['Access-Control-Allow-Origin']=='https://paulycee.com'
+                assert response.status==206;assert response.read()[4:8]==b'ftyp';assert response.headers['Content-Length']=='44';assert response.headers['Access-Control-Allow-Origin']=='https://paulycee.com'
             with get('/audio/1001',{'Range':'bytes=-10'}) as response:assert len(response.read())==10
             cases=[('/library',{'Authorization':'Bearer incorrect'},401),('/library',{'Origin':'https://evil.example'},403),('/audio/../../access-key.txt',{},404),('/audio/9999',{},404),('/audio/1001',{'Range':'bytes=999999999-'},416)]
             for path,headers,code in cases:
