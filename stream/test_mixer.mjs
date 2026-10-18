@@ -1,0 +1,15 @@
+import assert from 'node:assert/strict';
+import {makeStreamPlan,gainAt} from './mixer.js';
+const tracks=[{id:'a',duration:240,bpm:120,intro:0,grids:[{time:0,bpm:120,beat:1}]},{id:'b',duration:220,bpm:128,intro:1,grids:[{time:1,bpm:128,beat:1}]}];
+const plan=makeStreamPlan(tracks,120);
+assert.equal(plan[0].fadeOut,16);assert.equal(plan[1].fadeIn,16);
+assert.equal(plan[1].start,plan[0].end-16);
+assert.equal(plan[1].source(0),1);
+assert.equal(plan[1].source(16),1+32*60/128);
+assert.equal(plan[0].source(plan[0].duration)-plan[0].source(plan[0].duration-16),32*60/120);
+const mid=plan[1].start+8;assert.ok(Math.abs(gainAt(plan[0],mid)**2+gainAt(plan[1],mid)**2-1)<1e-9);
+const variable=makeStreamPlan([{id:'v',duration:90,intro:0,bpm:120,grids:[{time:0,bpm:120,beat:1},{time:30,bpm:130,beat:1}]},tracks[1]],120);
+assert.ok(variable[0].duration>90);assert.equal(variable[0].fadeOut,16);
+const fallback=makeStreamPlan([{id:'x',duration:180,bpm:0,intro:0,grids:[]},tracks[0]],120);assert.equal(fallback[0].synced,false);assert.equal(fallback[1].fadeIn,16);
+const short=makeStreamPlan([{...tracks[0],duration:8},tracks[1]],120);assert.equal(short[1].fadeIn,4);
+console.log('PASS: exactly 32-beat handoffs across different BPMs, first downbeat, equal-power fades, variable grids, missing grids and short clips.');

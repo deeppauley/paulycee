@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+*.log
+*.mp3
+*.m4a
+*.wav
+*.xml
