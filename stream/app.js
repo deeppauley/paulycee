@@ -1,4 +1,4 @@
-import {StreamMixer,gainAt} from './mixer.js?v=20261019-tight-sync';
+import {StreamMixer,gainAt} from './mixer.js?v=20261019-steady-server';
 import {favoriteOrder} from './order.js';
 const $=s=>document.querySelector(s),status=t=>{$('#status').textContent=t;};
 const fmt=n=>{n=Math.max(0,Math.floor(n||0));return Math.floor(n/60)+':'+String(n%60).padStart(2,'0');};
@@ -11,11 +11,7 @@ filters.innerHTML='<label>Favorites order<select id="favorite-sort"><option valu
 document.querySelector('.toolbar').after(filters);
 for(let n=1;n<=12;n++)for(const letter of ['A','B'])$('#key-filter').add(new Option(n+letter,n+letter));
 for(const input of filters.querySelectorAll('input,select'))input.onchange=()=>applyPlaylist();
-const nudges=document.createElement('div');nudges.className='settings';
-nudges.innerHTML='<span class="note">Off-grid incoming track?</span><button id="nudge-back" type="button">−20 ms</button><button id="nudge-forward" type="button">+20 ms</button><span id="nudge-value" class="note">0 ms · resets when track reloads</span>';
-document.querySelector('.player>.note').before(nudges);
-for(const [id,delta]of [['#nudge-back',-.02],['#nudge-forward',.02]])$(id).onclick=()=>{const n=mixer.nudge(delta);if(n!==undefined)$('#nudge-value').textContent=Math.round(n*1000)+' ms';};
-document.querySelector('.player>.note').textContent='32-beat transitions use Rekordbox grids, gentle playback-drift correction and a bass handover. Incorrect grids still need correction: use ±20 ms to shift the incoming track by ear. This is not automatic audio beat detection. Speed changes affect pitch. Keep this page open for mixing; screen-lock playback is browser-dependent.';
+document.querySelector('.player>.note').textContent='Your PC automatically checks intro/outro beats and prepares pitch-preserving audio at a steady mix tempo. Confident grids use 32-beat blends; uncertain tracks use a shorter bass-managed transition. First play may take longer while audio is prepared and cached. Keep this page open for mixing; screen-lock playback is browser-dependent.';
 async function request(path,kind='json',options={}){
   if(!connected&&path!='/library')throw Error('Connect to your PC first.');
   const controller=new AbortController();requests.add(controller);const timer=setTimeout(()=>controller.abort(),180000);
@@ -25,7 +21,7 @@ async function request(path,kind='json',options={}){
   }catch(e){if(e instanceof TypeError)throw Error('Cannot reach your PC. Check that the server and secure connection are running and that the PC is awake.');if(e.name==='AbortError')throw Error('Connection cancelled or timed out. Try again.');throw e;}
   finally{clearTimeout(timer);requests.delete(controller);}
 }
-const mixer=new StreamMixer({url:track=>server+'/audio/'+encodeURIComponent(track.id),onchange:()=>update(),onerror:e=>status(e.message)});
+const mixer=new StreamMixer({url:track=>server+'/audio/'+encodeURIComponent(track.id)+'?tempo='+mixer.tempo,prepareTrack:(track,tempo)=>request('/prepare/'+encodeURIComponent(track.id)+'?tempo='+tempo),onchange:()=>update(),onerror:e=>status(e.message)});
 async function loadFavorites(migrate=false){
   if(syncingFavorites||pendingFavorites.size||!connected)return;syncingFavorites=true;
   try{
@@ -68,8 +64,6 @@ function update(){
   $('#play').textContent=mixer.loading?'Loading…':mixer.playing?'Ⅱ Pause':'▶ Play';$('#play').disabled=mixer.loading||!item;
   for(const id of ['#jump','#previous','#next','#seek','#favorite-current'])$(id).disabled=mixer.loading||!item;
   $('#tempo').disabled=mixer.loading;
-  $('#nudge-back').disabled=$('#nudge-forward').disabled=mixer.loading||!item;
-  const currentDeck=mixer.decks[item?.index%2];$('#nudge-value').textContent=Math.round((currentDeck?.item===item?currentDeck?.nudge||0:0)*1000)+' ms';
   if(!item){$('#now-title').textContent='Choose a track';$('#now-artist').textContent='Start a playlist to hear your next mix.';$('#next-title').textContent='—';$('#metrics').textContent='32-BEAT AUTOMIX';$('#elapsed').textContent='0:00';$('#duration').textContent='0:00';$('#blend').value=0;$('#mix-state').textContent='';return;}
   $('#now-title').textContent=item.track.name;$('#now-artist').textContent=item.track.artist||'Unknown artist';$('#next-title').textContent=next?.track.name||'End of playlist';
   $('#metrics').textContent=`${mixer.tempo} BPM MIX · ${item.track.key||'KEY UNKNOWN'} · ${item.synced?'BEAT SYNC':'NATURAL SPEED'}`;

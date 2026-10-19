@@ -7,13 +7,13 @@ export function makeStreamPlan(tracks,tempo){
     const gs=grid(track),synced=gs.length>0;
     const intro=Math.max(0,Math.min(track.intro||0,track.duration-.1));
     const base=synced?beatAt(gs,intro):0;
-    let outro=track.duration;
-    if(synced)outro=sourceAt(gs,base+Math.floor((beatAt(gs,outro)-base)/4)*4);
+    let outro=track.mixOutro||track.duration;
+    if(synced&&!track.prepared)outro=sourceAt(gs,base+Math.floor((beatAt(gs,outro)-base)/4)*4);
     if(outro<=intro)outro=track.duration;
     const duration=synced?(beatAt(gs,outro)-base)*60/tempo:outro-intro;
     const previous=plan.at(-1);
     // Short clips cannot supply 32 beats: use as much as half of either clip.
-    const overlap=previous?Math.min(32*60/tempo,duration/2,previous.duration/2):0;
+    const overlap=previous?Math.min(Math.min(track.mixBeats||32,previous.track.mixBeats||32)*60/tempo,duration/2,previous.duration/2):0;
     const start=previous?previous.end-overlap:0;
     const item={track,gs,synced,intro,outro,base,duration,start,end:start+duration,fadeIn:overlap,fadeOut:0,index:plan.length};
     item.source=local=>synced?sourceAt(gs,base+local*tempo/60):intro+local;
@@ -24,8 +24,6 @@ export function makeStreamPlan(tracks,tempo){
   return plan;
 }
 export {gainAt};
-// Correct transport drift gradually; never repeatedly seek an audible deck.
-export function syncRate(error){return Math.abs(error)<.012?1:1+Math.max(-.025,Math.min(.025,error*.18));}
 export function bassAt(item,time){
   if(item.fadeIn&&time<item.start+item.fadeIn)return -24*(1-Math.min(1,Math.max(0,(time-item.start)/item.fadeIn*2-1)));
   if(item.fadeOut&&time>item.end-item.fadeOut)return -24*Math.min(1,Math.max(0,(time-(item.end-item.fadeOut))/item.fadeOut*2));
@@ -33,14 +31,14 @@ export function bassAt(item,time){
 }
 
 export class StreamMixer{
-  constructor({url,onchange,onerror}){this.url=url;this.onchange=onchange;this.onerror=onerror;this.decks=[];this.failed=new Set();this.plan=[];this.tempo=120;this.offset=0;this.playing=false;this.epoch=0;this.volume=.8;this.loading=false;}
+  constructor({url,prepareTrack,onchange,onerror}){this.url=url;this.prepareTrack=prepareTrack;this.onchange=onchange;this.onerror=onerror;this.decks=[];this.failed=new Set();this.plan=[];this.tempo=120;this.offset=0;this.playing=false;this.epoch=0;this.volume=.8;this.loading=false;}
   context(){
     if(!this.ctx){
       this.ctx=new AudioContext();this.master=this.ctx.createGain();this.master.gain.value=this.volume;this.master.connect(this.ctx.destination);
       for(let i=0;i<2;i++){
-        const audio=new Audio();audio.crossOrigin='anonymous';audio.preload='auto';audio.preservesPitch=false;audio.setAttribute('playsinline','');
+        const audio=new Audio();audio.crossOrigin='anonymous';audio.preload='auto';audio.preservesPitch=true;audio.setAttribute('playsinline','');
         const source=this.ctx.createMediaElementSource(audio),gain=this.ctx.createGain(),bass=this.ctx.createBiquadFilter();bass.type='lowshelf';bass.frequency.value=180;gain.gain.value=0;source.connect(bass);bass.connect(gain);gain.connect(this.master);
-        const deck={audio,gain,bass,item:null,starting:false,nudge:0};this.decks.push(deck);
+        const deck={audio,gain,bass,item:null,starting:false};this.decks.push(deck);
         audio.addEventListener('ended',()=>{
           if(!this.playing||deck.starting)return;
           const next=deck.item?.index+1;
@@ -57,27 +55,47 @@ export class StreamMixer{
     }
     return this.ctx;
   }
-  time(){return this.playing?Math.max(0,this.offset+this.ctx.currentTime-this.anchor):this.offset;}
+  time(){
+    // Follow the audible outgoing transport, not a second clock that may drift on iOS.
+    if(this.playing){
+      const d=this.decks.filter(d=>d.item&&!d.audio.paused&&!d.starting&&d.audio.currentTime<d.item.outro-.02).sort((a,b)=>a.item.index-b.item.index)[0];
+      if(d)return Math.max(0,d.item.start+d.item.local(d.audio.currentTime));
+      return Math.max(0,this.offset+this.ctx.currentTime-this.anchor);
+    }
+    return this.offset;
+  }
   index(){return (this.plan.findLast(p=>p.start<=this.time()+.001)||this.plan[0])?.index||0;}
-  setQueue(tracks,tempo=this.tempo){this.pause();this.unload();this.tempo=tempo;this.tracks=tracks;this.plan=makeStreamPlan(tracks,tempo);this.offset=0;this.failed.clear();this.onchange();}
+  setQueue(tracks,tempo=this.tempo){this.pause();this.unload();this.tempo=tempo;this.tracks=tracks.map(t=>{const original=t._original||t;return {...original,_original:original};});this.plan=makeStreamPlan(this.tracks,tempo);this.offset=0;this.failed.clear();this.onchange();}
   prepare(item){
     this.context();const deck=this.decks[item.index%2];if(deck.item===item)return deck;
-    deck.audio.pause();deck.item=item;deck.nudge=0;deck.error=null;deck.gain.gain.cancelScheduledValues(this.ctx.currentTime);deck.gain.gain.value=0;
+    deck.audio.pause();deck.item=item;deck.error=null;deck.gain.gain.cancelScheduledValues(this.ctx.currentTime);deck.gain.gain.value=0;
     const audio=deck.audio;
-    deck.ready=new Promise((resolve,reject)=>{
+    const queue=this.plan;
+    deck.ready=(async()=>{
+      if(this.prepareTrack&&!item.track.prepared){
+        const data=await this.prepareTrack(item.track,this.tempo);
+        if(this.plan!==queue||deck.item!==item)throw Error('Track changed.');
+        Object.assign(item.track,data);
+        const rebuilt=makeStreamPlan(this.tracks,this.tempo);
+        for(let i=0;i<queue.length;i++)Object.assign(queue[i],rebuilt[i]);
+        if(this.playing){const time=this.time();for(const d of this.decks)if(d.item&&!d.audio.paused)this.envelope(d,time);}
+      }
+      if(deck.item!==item)throw Error('Track changed.');
+      return new Promise((resolve,reject)=>{
       const clear=()=>{clearTimeout(timer);audio.removeEventListener('loadedmetadata',ready);audio.removeEventListener('error',error);audio.removeEventListener('emptied',cancel);};
       const ready=()=>{clear();resolve();};const error=()=>{clear();reject(Error('This track cannot stream. Check its source file on the PC.'));};
       const cancel=()=>{if(deck.item!==item){clear();reject(Error('Track changed.'));}};
       const timer=setTimeout(()=>{clear();reject(Error('The PC took too long to prepare this track.'));},60000);
       audio.addEventListener('loadedmetadata',ready);audio.addEventListener('error',error);audio.addEventListener('emptied',cancel);
       audio.src=this.url(item.track);audio.load();
-    });
+      });
+    })();
     deck.ready.catch(error=>{if(deck.item===item)deck.error=error;});return deck;
   }
   pause(){this.offset=this.time();this.playing=false;this.loading=false;this.epoch++;clearInterval(this.timer);for(const d of this.decks){d.audio.pause();d.gain.gain.cancelScheduledValues(this.ctx.currentTime);d.gain.gain.value=0;}this.wake?.release().catch(()=>{});this.wake=null;this.onchange();}
   unload(){for(const d of this.decks){d.item=null;d.audio.removeAttribute('src');d.audio.load();}}
   clear(){this.pause();this.unload();this.plan=[];this.tracks=[];this.offset=0;this.onchange();}
-  rate(item,position){const g=item.gs.findLast(g=>g.time<=position)||item.gs[0];return item.synced?this.tempo/g.bpm:1;}
+  rate(item,position){return item.track.prepared?1:item.synced?this.tempo/(item.track.bpm||this.tempo):1;}
   envelope(deck,time){
     deck.bass.gain.setValueAtTime(bassAt(deck.item,time),this.ctx.currentTime);
     const item=deck.item,ctx=this.ctx,start=Math.max(time,item.start),param=deck.gain.gain;param.cancelScheduledValues(ctx.currentTime);
@@ -90,11 +108,11 @@ export class StreamMixer{
     const deck=this.prepare(item);if(deck.starting)return;deck.starting=true;
     try{
       await deck.ready;if(token!==this.epoch||deck.item!==item)return;
-      const position=Math.min(deck.audio.duration-.01,Math.max(0,item.source(Math.max(0,this.time()-item.start))+deck.nudge));
+      const position=Math.min(deck.audio.duration-.01,Math.max(0,item.source(Math.max(0,this.time()-item.start))));
       deck.audio.currentTime=position;deck.audio.playbackRate=this.rate(item,position);
       await deck.audio.play();if(token!==this.epoch){deck.audio.pause();return;}
       // Catch up to the shared beat clock if the browser needed time to start.
-      const expected=item.source(Math.max(0,this.time()-item.start))+deck.nudge;
+      const expected=item.source(Math.max(0,this.time()-item.start));
       if(!this.loading&&Math.abs(deck.audio.currentTime-expected)>.06)deck.audio.currentTime=Math.min(deck.audio.duration-.01,expected);
       this.envelope(deck,this.time());
     }finally{deck.starting=false;}
@@ -113,14 +131,16 @@ export class StreamMixer{
       try{if(navigator.audioSession)navigator.audioSession.type='playback';}catch{}
       await this.context().resume();if(this.offset>=this.plan.at(-1).end)this.offset=0;
       let active=this.plan.filter(p=>p.start<=this.offset+.001&&p.end>this.offset);
+      const selected=this.index(),selectedLocal=this.offset-this.plan[selected].start;
       await Promise.all(active.map(p=>this.prepare(p).ready));if(token!==this.epoch)return;
+      this.offset=this.plan[selected].start+selectedLocal;
       // Native media buffering avoids allocating two full decoded tracks in memory.
       const index=this.index(),local=this.offset-this.plan[index].start;let changed=false;
       for(const p of active){const actual=this.decks[p.index%2].audio.duration;if(Number.isFinite(actual)&&Math.abs(actual-p.track.duration)>.05){p.track.duration=actual;changed=true;}}
       if(changed){this.plan=makeStreamPlan(this.tracks,this.tempo);this.offset=this.plan[index].start+local;active=this.plan.filter(p=>p.start<=this.offset+.001&&p.end>this.offset);for(const p of active)this.decks[p.index%2].item=p;}
       this.anchor=this.ctx.currentTime;this.playing=true;
       await Promise.all(active.map(p=>this.startDeck(p,token)));if(token!==this.epoch)return;
-      const reference=this.decks[active[0].index%2];this.anchor=this.offset+this.ctx.currentTime-reference.item.start-reference.item.local(reference.audio.currentTime-reference.nudge);
+      const reference=this.decks[active[0].index%2];this.anchor=this.offset+this.ctx.currentTime-reference.item.start-reference.item.local(reference.audio.currentTime);
       for(const p of active)this.envelope(this.decks[p.index%2],this.time());
       this.timer=setInterval(()=>this.tick(),100);this.preloadNext();
       if('wakeLock'in navigator)navigator.wakeLock.request('screen').then(w=>{if(this.playing)this.wake=w;else w.release();}).catch(()=>{});
@@ -137,8 +157,8 @@ export class StreamMixer{
         const d=this.prepare(item);
         if(d.audio.paused&&!d.starting)this.startDeck(item,token).catch(e=>{if(token===this.epoch){this.failed.add(item.index);this.onerror(e);if(this.time()>=item.end)this.skipFailed(item.index);}});
         else if(!d.starting){
-          const position=d.audio.currentTime,expected=item.source(Math.max(0,time-item.start))+d.nudge;
-          d.audio.playbackRate=this.rate(item,position)*syncRate(expected-position);
+          // Do not servo playbackRate: repeated corrections cause audible pitch/tempo hunting.
+          // The PC renders a steady, pitch-preserving tempo before streaming.
           d.bass.gain.setTargetAtTime(bassAt(item,time),this.ctx.currentTime,.04);
         }
       }
@@ -146,5 +166,4 @@ export class StreamMixer{
   }
   async seek(time,autoplay=this.playing){this.pause();this.offset=Math.max(0,Math.min(this.plan.at(-1)?.end||0,time));this.onchange();if(autoplay)await this.play();}
   setVolume(value){this.volume=value;if(this.master)this.master.gain.setTargetAtTime(value,this.ctx.currentTime,.02);}
-  nudge(seconds){const item=this.plan[this.index()],d=item&&this.decks[item.index%2];if(!d||d.item!==item)return;d.nudge=Math.max(-.5,Math.min(.5,d.nudge+seconds));d.audio.currentTime=Math.max(0,Math.min(d.audio.duration-.01,d.audio.currentTime+seconds));return d.nudge;}
 }

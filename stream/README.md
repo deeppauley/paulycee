@@ -22,12 +22,13 @@ The mixer uses the first playable track's BPM as the session tempo (editable). I
 
 MP3/M4A/AAC are served directly with HTTP byte ranges. WAV and other formats transcode to stereo AAC on demand in the runtime folder, never the repo, to avoid transferring huge lossless originals. The PC must stay awake with its source drives connected. Upload speed limits remote playback; the next track is buffered ahead of the overlap. Codec support depends on the browser. Incompatible M4A codecs may need manual conversion.
 
-## Stop and restart
 ## Favorites ordering and transition correction
 
 Favorites default to ascending BPM. BPM range and normalized Camelot-key filters, and ascending/descending BPM/key sorting, define the automix queue as well as the displayed list. Unknown BPM/key sort last. Changing these controls stops playback; press Play to start the new queue. Text search only narrows the displayed rows.
 
-The streaming decks now gently correct transport drift (maximum 2.5% correction) and hand over low frequencies during the 32-beat overlap. This is not audio-based beat detection or automatic repair of bad Rekordbox grids. Use ±20 ms on the current/incoming deck to correct a misaligned grid by ear (maximum ±500 ms, reset on track reload). Tempo changes still affect pitch. Global favorites remain on the PC server; audio is not uploaded to Git.
+The PC analyzes low-frequency onset timing independently in the first and last 64 seconds, with the XML BPM as a constrained prior. Independent head/tail BPM agreement allows a conservative BPM refinement. FFmpeg `atempo` then prepares a constant-tempo, pitch-preserving AAC stream. The rendered audio is measured again for intro/outro alignment, keeping the XML bar position as a phrase prior. High-confidence results permit 32 beats; weak or inconsistent results choose 8 beats with bass handover. This is an automatic heuristic, not guaranteed recovery of arbitrary live drums, breakbeats, silent intros, or incorrect half/double BPM metadata.
+
+The browser always plays prepared audio at rate 1, follows the audible outgoing media transport and no longer chases drift or variable XML tempo markers with continuous speed changes. Manual nudges have been removed. First playback at a new mix tempo takes extra preparation time. The next track prepares ahead of its transition; cache hits bypass the render lock so existing streams are not blocked. Analysis and rendered audio live in `mix-cache` under the external state directory, keyed by source path/mtime/size, algorithm version and requested tempo. No music is uploaded to Git. Global favorites remain unchanged on the PC server. Requires NumPy plus FFmpeg/ffprobe on the PC; tests cover shifted synthetic kicks, pitch preservation, cache reuse and browser rate stability. An actual iPhone listening test is still required for device-specific validation.
 
 ## Stop and restart
 

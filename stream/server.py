@@ -2,6 +2,7 @@
 import argparse,hashlib,hmac,json,mimetypes,os,pathlib,re,secrets,sqlite3,subprocess,threading,urllib.parse,xml.etree.ElementTree as ET
 from contextlib import contextmanager,closing
 from http.server import ThreadingHTTPServer,BaseHTTPRequestHandler
+from beat_analysis import prepare as prepare_mix
 
 def library(xml):
     root=ET.parse(xml).getroot();tracks=[];paths={}
@@ -97,7 +98,22 @@ def main():
                     if not head:self.wfile.write(data)
                 except Exception:self.send_error(503,'Cannot read Rekordbox XML')
                 return
-            match=re.fullmatch(r'/audio/(\d+)',route)
+            prepared=re.fullmatch(r'/prepare/(\d+)',route)
+            audio_match=re.fullmatch(r'/audio/(\d+)',route)
+            mix_file=None
+            if prepared or (audio_match and 'tempo' in urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query)):
+                selected=(prepared or audio_match)[1]
+                if selected not in paths or not paths[selected].is_file():self.send_error(404);return
+                try:
+                    tempo=float(urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query).get('tempo',['120'])[0])
+                    if not 60<=tempo<=180 or round(tempo,1)!=tempo:raise ValueError()
+                except (ValueError,TypeError):self.send_error(400,'Invalid tempo');return
+                try:
+                    track=next(t for t in catalog['tracks'] if t['id']==selected)
+                    result,mix_file=prepare_mix(paths[selected],track,tempo,state/'mix-cache')
+                    if prepared:self.json_response(result,head);return
+                except Exception:self.send_error(503,'Automatic mix preparation failed');return
+            match=audio_match
             if not match or match[1] not in paths:self.send_error(404);return
             source=paths[match[1]]
             if not source.is_file():self.send_error(404,'Source file is unavailable on the PC');return
@@ -105,8 +121,8 @@ def main():
                 stat=source.stat();fingerprint=hashlib.sha256((str(source)+str(stat.st_mtime_ns)+str(stat.st_size)).encode()).hexdigest()
                 # MP3/M4A/WAV are served directly. Other formats become AAC on demand,
                 # cached outside the repository; nothing is uploaded to GitHub.
-                file=source;mime=mimetypes.guess_type(source.name)[0] or 'application/octet-stream'
-                if source.suffix.lower() not in {'.mp3','.m4a','.aac'}:
+                file=mix_file or source;mime='audio/mp4' if mix_file else mimetypes.guess_type(source.name)[0] or 'application/octet-stream'
+                if not mix_file and source.suffix.lower() not in {'.mp3','.m4a','.aac'}:
                     file=cache/(fingerprint+'.m4a');mime='audio/mp4'
                     with semaphore:
                         if not file.exists():

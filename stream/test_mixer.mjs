@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {makeStreamPlan,gainAt} from './mixer.js';
+import {makeStreamPlan,gainAt,StreamMixer} from './mixer.js';
 const tracks=[{id:'a',duration:240,bpm:120,intro:0,grids:[{time:0,bpm:120,beat:1}]},{id:'b',duration:220,bpm:128,intro:1,grids:[{time:1,bpm:128,beat:1}]}];
 const plan=makeStreamPlan(tracks,120);
 assert.equal(plan[0].fadeOut,16);assert.equal(plan[1].fadeIn,16);
@@ -12,4 +12,11 @@ const variable=makeStreamPlan([{id:'v',duration:90,intro:0,bpm:120,grids:[{time:
 assert.ok(variable[0].duration>90);assert.equal(variable[0].fadeOut,16);
 const fallback=makeStreamPlan([{id:'x',duration:180,bpm:0,intro:0,grids:[]},tracks[0]],120);assert.equal(fallback[0].synced,false);assert.equal(fallback[1].fadeIn,16);
 const short=makeStreamPlan([{...tracks[0],duration:8},tracks[1]],120);assert.equal(short[1].fadeIn,4);
+const mixer=new StreamMixer({url:()=>'',onchange:()=>{},onerror:()=>{}});
+mixer.setQueue(tracks,120);Object.assign(mixer.tracks[0],{prepared:true,bpm:120,duration:230});
+assert.equal(mixer.rate(mixer.plan[0],10),1);
+mixer.setQueue(mixer.tracks,130);
+assert.equal(mixer.tracks[0].prepared,undefined);assert.equal(mixer.tracks[0].duration,240);
+const prepared=makeStreamPlan([{...tracks[0],prepared:true,bpm:125,mixOutro:239.7,mixBeats:8},tracks[1]],125);
+assert.equal(prepared[0].outro,239.7);assert.equal(prepared[1].fadeIn,8*60/125);
 console.log('PASS: exactly 32-beat handoffs across different BPMs, first downbeat, equal-power fades, variable grids, missing grids and short clips.');

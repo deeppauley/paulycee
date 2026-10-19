@@ -32,6 +32,14 @@ def main():
                 except OSError:time.sleep(.05)
             assert len(catalog['tracks'])==2;assert all(t['available'] for t in catalog['tracks']);assert catalog['playlists'][0]['tracks']==['1002','1001'];assert catalog['playlists'][0]['name']=='Folder / Test playlist'
             assert 'Location' not in json.dumps(catalog) and str(root) not in json.dumps(catalog)
+            with get('/prepare/1001?tempo=125') as response:prepared=json.load(response)
+            assert prepared['prepared'] and prepared['bpm']==125 and prepared['mixBeats']==8
+            assert str(root) not in json.dumps(prepared)
+            with get('/audio/1001?tempo=125',{'Range':'bytes=0-43'}) as response:
+                assert response.status==206 and response.read()[4:8]==b'ftyp'
+            for bad in ['nan','0','999','125.123']:
+                try:get('/prepare/1001?tempo='+bad);raise AssertionError('Accepted invalid preparation tempo')
+                except urllib.error.HTTPError as e:assert e.code==400
             with get('/audio/1001',{'Range':'bytes=0-43','Origin':'https://paulycee.com'}) as response:
                 assert response.status==206;assert response.read()[4:8]==b'ftyp';assert response.headers['Content-Length']=='44';assert response.headers['Access-Control-Allow-Origin']=='https://paulycee.com'
             with get('/audio/1001',{'Range':'bytes=-10'}) as response:assert len(response.read())==10
