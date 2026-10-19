@@ -2,25 +2,42 @@ import {StreamMixer,gainAt} from './mixer.js?v=20261018-public';
 const $=s=>document.querySelector(s),status=t=>{$('#status').textContent=t;};
 const fmt=n=>{n=Math.max(0,Math.floor(n||0));return Math.floor(n/60)+':'+String(n%60).padStart(2,'0');};
 let server='',catalog={tracks:[],playlists:[]},visible=[],favoriteOnly=false,query='',connected=false,lastIndex=-1,lastMetadata='',connecting=false,rowLimit=200;
-let favorites=new Set();try{favorites=new Set(JSON.parse(localStorage.getItem('pauly-stream-favorites')||'[]'));}catch{}
+let favorites=new Set(),favoriteWrites=Promise.resolve(),syncingFavorites=false;
+const pendingFavorites=new Set();
 const requests=new Set();
-async function request(path,kind='json'){
+async function request(path,kind='json',options={}){
   if(!connected&&path!='/library')throw Error('Connect to your PC first.');
   const controller=new AbortController();requests.add(controller);const timer=setTimeout(()=>controller.abort(),180000);
-  try{const response=await fetch(server+path,{signal:controller.signal,cache:'no-store',credentials:'omit',referrerPolicy:'no-referrer'});
-    if(response.status===404)throw Error('This audio file is missing from the PC. Reconnect its drive or relocate it in Rekordbox.');
+  try{const response=await fetch(server+path,{...options,signal:controller.signal,cache:'no-store',credentials:'omit',referrerPolicy:'no-referrer'});
+    if(response.status===404)throw Error(path.startsWith('/favorites')?'Favorites are unavailable. Refresh the page or restart the updated PC server.':'This audio file is missing from the PC. Reconnect its drive or relocate it in Rekordbox.');
     if(!response.ok)throw Error('PC server could not serve this request ('+response.status+').');return kind==='audio'?await response.arrayBuffer():await response.json();
   }catch(e){if(e instanceof TypeError)throw Error('Cannot reach your PC. Check that the server and secure connection are running and that the PC is awake.');if(e.name==='AbortError')throw Error('Connection cancelled or timed out. Try again.');throw e;}
   finally{clearTimeout(timer);requests.delete(controller);}
 }
 const mixer=new StreamMixer({url:track=>server+'/audio/'+encodeURIComponent(track.id),onchange:()=>update(),onerror:e=>status(e.message)});
-function saveFavorites(){try{localStorage.setItem('pauly-stream-favorites',JSON.stringify([...favorites]));}catch{status('Favorites cannot be saved in this browser.');}$('#favorite-count').textContent=favorites.size;}
-function toggleFavorite(id){if(!id)return;if(favorites.has(id))favorites.delete(id);else favorites.add(id);saveFavorites();renderRows();update();}
-function playlistTracks(){const chosen=$('#playlist').value;const byid=new Map(catalog.tracks.map(t=>[t.id,t]));const ids=chosen==='all'?catalog.tracks.map(t=>t.id):catalog.playlists.find(p=>p.id===chosen)?.tracks||[];return ids.map(id=>byid.get(id)).filter(Boolean).filter(t=>!favoriteOnly||favorites.has(t.id));}
+async function loadFavorites(migrate=false){
+  if(syncingFavorites||pendingFavorites.size||!connected)return;syncingFavorites=true;
+  try{
+    let legacy=[];if(migrate)try{const saved=JSON.parse(localStorage.getItem('pauly-stream-favorites')||'[]');if(Array.isArray(saved))legacy=saved.filter(id=>typeof id==='string');}catch{}
+    const data=legacy.length?await request('/favorites/import','json',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ids:legacy})}):await request('/favorites');
+    if(!Array.isArray(data.ids))throw Error('The server did not return a favorites list.');
+    favorites=new Set(data.ids);if(migrate)try{localStorage.removeItem('pauly-stream-favorites');}catch{}
+    if(!$('#room').hidden){renderRows();update();}
+  }finally{syncingFavorites=false;}
+}
+function toggleFavorite(id){
+  if(!id||pendingFavorites.has(id))return;const favorite=!favorites.has(id);pendingFavorites.add(id);renderRows();update();
+  favoriteWrites=favoriteWrites.then(async()=>{
+    try{const data=await request('/favorites/'+encodeURIComponent(id),'json',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({favorite})});favorites=new Set(data.ids);status(favorite?'Added to global favorites.':'Removed from global favorites.');}
+    catch(e){status('Could not save global favorites: '+e.message);}
+    finally{pendingFavorites.delete(id);if(connected){renderRows();update();}}
+  });
+}
+function playlistTracks(){if(favoriteOnly)return catalog.tracks.filter(t=>favorites.has(t.id));const chosen=$('#playlist').value;const byid=new Map(catalog.tracks.map(t=>[t.id,t]));const ids=chosen==='all'?catalog.tracks.map(t=>t.id):catalog.playlists.find(p=>p.id===chosen)?.tracks||[];return ids.map(id=>byid.get(id)).filter(Boolean);}
 function applyPlaylist(){rowLimit=200;mixer.setQueue(playlistTracks().filter(t=>t.available&&t.duration>0),Number($('#tempo').value));lastIndex=-1;renderRows();status(mixer.plan.length+' playable tracks in this queue.');}
 function renderRows(){
   visible=playlistTracks().filter(t=>!query||(t.name+' '+t.artist).toLowerCase().includes(query));const rows=$('#tracks');rows.replaceChildren();
-  $('#queue-title').textContent=favoriteOnly?'Your favorites':$('#playlist').selectedOptions[0]?.textContent||'Collection';
+  $('#queue-title').textContent=favoriteOnly?'Global favorites':$('#playlist').selectedOptions[0]?.textContent||'Collection';
   $('#count').textContent=visible.length+' tracks';$('#favorite-count').textContent=favorites.size;
   const current=mixer.plan[mixer.index()]?.track.id;
   $('#load-more').hidden=visible.length<=rowLimit;
@@ -29,6 +46,7 @@ function renderRows(){
     const number=document.createElement('span');number.className='number';number.textContent=String(i+1).padStart(2,'0');
     const copy=document.createElement('div'),name=document.createElement('strong'),detail=document.createElement('small');name.textContent=t.name;detail.textContent=`${t.artist||'Unknown artist'} · ${t.bpm||'?'} BPM · ${t.key||'Key unknown'} · ${fmt(t.duration)}${t.available?'':' · File unavailable on PC'}`;copy.append(name,detail);
     const star=document.createElement('button');star.textContent=favorites.has(t.id)?'♥':'♡';star.setAttribute('aria-label',(favorites.has(t.id)?'Unfavorite ':'Favorite ')+t.name);star.setAttribute('aria-pressed',String(favorites.has(t.id)));star.onclick=()=>toggleFavorite(t.id);
+    star.disabled=pendingFavorites.has(t.id);
     const play=document.createElement('button');play.textContent='▶';play.setAttribute('aria-label','Play '+t.name);play.disabled=!t.available;play.onclick=()=>{const index=mixer.plan.findIndex(p=>p.track.id===t.id);if(index>=0)mixer.seek(mixer.plan[index].start,true).catch(e=>status(e.message));};
     row.append(number,copy,star,play);rows.append(row);
   }
@@ -48,6 +66,7 @@ function update(){
   $('#next-label').textContent=overlap.length===2?'MIXING FROM':'UP NEXT';
   if(overlap.length===2)$('#next-title').textContent=overlap[0].track.name;
   $('#favorite-current').textContent=favorites.has(item.track.id)?'♥':'♡';$('#favorite-current').setAttribute('aria-pressed',String(favorites.has(item.track.id)));
+  $('#favorite-current').disabled=mixer.loading||pendingFavorites.has(item.track.id);
   if(i!==lastIndex){lastIndex=i;for(const row of document.querySelectorAll('.track'))row.classList.toggle('active',row.dataset.id===item.track.id);}
   if('mediaSession'in navigator){
     if(lastMetadata!==item.track.id&&'MediaMetadata'in window){navigator.mediaSession.metadata=new MediaMetadata({title:item.track.name,artist:item.track.artist||'Pauly Cee',album:'Stream Room'});lastMetadata=item.track.id;}
@@ -63,16 +82,17 @@ async function connect(){
     server=url.origin;status('Reading your Rekordbox library…');
     const data=await request('/library');if(!Array.isArray(data.tracks)||!Array.isArray(data.playlists))throw Error('The server did not return a Rekordbox library.');
     const previousPlaylist=$('#playlist').value;catalog=data;connected=true;$('#library-source').textContent='REKORDBOX / '+(catalog.name||'LIVE LIBRARY');$('#playlist').replaceChildren(new Option('Full collection','all'));
+    await favoriteWrites;await loadFavorites(true);
     for(const p of catalog.playlists)$('#playlist').add(new Option(p.name,p.id));
     if([...$('#playlist').options].some(p=>p.value===previousPlaylist))$('#playlist').value=previousPlaylist;
     const first=catalog.tracks.find(t=>t.available&&t.bpm>=60&&t.bpm<=180);$('#tempo').value=first?.bpm||120;
     $('#connect').hidden=true;$('#room').hidden=false;$('#disconnect').hidden=false;
     try{sessionStorage.removeItem('pauly-stream-connection');}catch{}
-    applyPlaylist();status(`${catalog.tracks.length} tracks · ${catalog.playlists.length} playlists · ${catalog.tracks.filter(t=>!t.available).length} unavailable on PC. Favorites are saved on this browser.`);
+    applyPlaylist();status(`${catalog.tracks.length} tracks · ${catalog.playlists.length} playlists · ${catalog.tracks.filter(t=>!t.available).length} unavailable on PC. Global favorites saved on the server.`);
   }catch(e){status(e.message);}finally{connecting=false;button.disabled=false;}
 }
 $('#connection').onsubmit=e=>{e.preventDefault();connect();};
-$('#disconnect').onclick=()=>{for(const r of requests)r.abort();mixer.clear();connected=false;catalog={tracks:[],playlists:[]};$('#room').hidden=true;$('#connect').hidden=false;$('#disconnect').hidden=true;if('mediaSession'in navigator){navigator.mediaSession.metadata=null;navigator.mediaSession.playbackState='none';}status('Disconnected. Your favorites are saved on this browser.');};
+$('#disconnect').onclick=()=>{for(const r of requests)r.abort();mixer.clear();connected=false;catalog={tracks:[],playlists:[]};$('#room').hidden=true;$('#connect').hidden=false;$('#disconnect').hidden=true;if('mediaSession'in navigator){navigator.mediaSession.metadata=null;navigator.mediaSession.playbackState='none';}status('Disconnected. Global favorites are saved on the server.');};
 $('#refresh').onclick=async()=>{if(mixer.loading){status('Wait for the current track to finish loading before refreshing.');return;}mixer.pause();$('#server').value=server;await connect();};
 $('#playlist').onchange=applyPlaylist;
 $('#favorites').onclick=()=>{favoriteOnly=!favoriteOnly;$('#favorites').setAttribute('aria-pressed',String(favoriteOnly));applyPlaylist();};
@@ -87,7 +107,9 @@ $('#volume').oninput=e=>mixer.setVolume(Number(e.target.value));
 $('#tempo').onchange=()=>{const tempo=Number($('#tempo').value);if(!Number.isFinite(tempo)||tempo<60||tempo>180){$('#tempo').value=mixer.tempo;status('Choose a tempo between 60 and 180 BPM.');return;}const index=mixer.index(),playing=mixer.playing;mixer.setQueue(mixer.tracks,tempo);mixer.seek(mixer.plan[index]?.start||0,playing);status('Mix tempo changed; restarted the current track.');};
 $('#favorite-current').onclick=()=>toggleFavorite(mixer.plan[mixer.index()]?.track.id);
 if('mediaSession'in navigator)for(const [action,handler]of Object.entries({play:()=>mixer.play(),pause:()=>mixer.pause(),nexttrack:()=>$('#next').click(),previoustrack:()=>$('#previous').click()}))try{navigator.mediaSession.setActionHandler(action,handler);}catch{}
-setInterval(()=>{if(mixer.playing)update();},250);saveFavorites();update();
+setInterval(()=>{if(mixer.playing)update();},250);update();
+setInterval(()=>{if(connected&&!document.hidden)loadFavorites().catch(()=>{});},15000);
+window.addEventListener('focus',()=>{if(connected)loadFavorites().catch(()=>{});});
 const fragment=new URLSearchParams(location.hash.slice(1));
 if(fragment.has('key'))history.replaceState(null,'',location.pathname);
 const configuration=fragment.has('server')?Promise.resolve({server:fragment.get('server')}):fetch('connection.json',{cache:'no-store'}).then(r=>{if(!r.ok)throw Error('No server configured.');return r.json();});

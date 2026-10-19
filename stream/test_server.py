@@ -39,7 +39,25 @@ def main():
             for path,headers,code in cases:
                 try:get(path,headers);raise AssertionError('Unexpected success')
                 except urllib.error.HTTPError as e:assert e.code==code,(path,e.code)
+            def write(path,body,method='PUT'):
+                req=urllib.request.Request(base+path,data=json.dumps(body).encode(),method=method,headers={'Authorization':'Bearer '+key,'Content-Type':'application/json','Origin':'https://paulycee.com'})
+                with urllib.request.urlopen(req,timeout=10) as r:return json.load(r)
+            assert write('/favorites/1001',{'favorite':True})['ids']==['1001']
+            assert write('/favorites/1001',{'favorite':True})['ids']==['1001']
+            assert write('/favorites/import',{'ids':['1001','1002','9999']},'POST')['ids']==['1001','1002']
+            assert write('/favorites/1001',{'favorite':False})['ids']==['1002']
+            try:write('/favorites/9999',{'favorite':True});raise AssertionError('Accepted unknown track')
+            except urllib.error.HTTPError as e:assert e.code==404
+            process.terminate();process.wait(timeout=10)
+            process=subprocess.Popen([sys.executable,str(pathlib.Path(__file__).with_name('server.py')),'--xml',str(xml),'--state',str(state),'--port',str(port)],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+            for _ in range(100):
+                try:
+                    with get('/favorites') as r:assert json.load(r)['ids']==['1002']
+                    break
+                except OSError:time.sleep(.05)
+            else:raise AssertionError('Server did not restart')
             print('PASS: nested playlist order, no source paths, auth, CORS, byte ranges, suffix ranges, invalid ranges and path allowlist.')
+            print('PASS: global favorite add/remove, idempotent saves, merge import, unknown-track rejection and persistence after server restart.')
         finally:process.terminate();process.wait(timeout=10)
 
 if __name__=='__main__':main()

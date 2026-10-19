@@ -21,7 +21,17 @@ def main():
                 page.route('**/stream/connection.json',lambda route:route.fulfill(json={'server':base}))
                 page.goto(a.url);page.wait_for_selector('#room',state='visible')
                 assert page.locator('#key').count()==0;assert page.locator('.track').count()==2
-                page.locator('.track button').nth(0).click();assert page.locator('#favorite-count').inner_text()=='1'
+                page.locator('.track button').nth(0).click();page.wait_for_function("document.querySelector('#favorite-count').textContent==='1'")
+                other=browser.new_context();second=other.new_page()
+                second.route('**/stream/connection.json',lambda route:route.fulfill(json={'server':base}))
+                second.goto(a.url);second.wait_for_selector('#room',state='visible')
+                assert second.locator('#favorite-count').inner_text()=='1','Favorites did not cross browser contexts'
+                second.evaluate("localStorage.setItem('pauly-stream-favorites',JSON.stringify(['1002']))")
+                second.reload();second.wait_for_selector('#room',state='visible')
+                assert second.locator('#favorite-count').inner_text()=='2'
+                assert second.evaluate("localStorage.getItem('pauly-stream-favorites')") is None
+                second.locator('.track').nth(1).locator('button').first.click();second.wait_for_function("document.querySelector('#favorite-count').textContent==='1'")
+                other.close()
                 page.reload();page.wait_for_selector('#room',state='visible');assert page.locator('#favorite-count').inner_text()=='1'
                 page.locator('#favorites').click();assert page.locator('.track').count()==1;page.locator('#favorites').click()
                 page.locator('#playlist').select_option('0');assert page.locator('.track strong').all_text_contents()==['Tone 2','Tone 1']

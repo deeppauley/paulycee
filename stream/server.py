@@ -1,5 +1,6 @@
 """Private PC audio server. Only XML-listed track IDs are served; no directory access."""
-import argparse,hashlib,hmac,json,mimetypes,os,pathlib,re,secrets,subprocess,threading,urllib.parse,xml.etree.ElementTree as ET
+import argparse,hashlib,hmac,json,mimetypes,os,pathlib,re,secrets,sqlite3,subprocess,threading,urllib.parse,xml.etree.ElementTree as ET
+from contextlib import contextmanager,closing
 from http.server import ThreadingHTTPServer,BaseHTTPRequestHandler
 
 def library(xml):
@@ -25,6 +26,16 @@ def main():
     keyfile=state/'access-key.txt'
     if not a.public and not keyfile.exists():keyfile.write_text(secrets.token_urlsafe(32))
     key=keyfile.read_text().strip() if not a.public else '';catalog,paths=library(current_xml());lock=threading.Lock();semaphore=threading.BoundedSemaphore(2)
+    favorites_db=state/'favorites.sqlite3'
+    @contextmanager
+    def favorites_connection():
+        with closing(sqlite3.connect(favorites_db,timeout=10)) as db:
+            with db:yield db
+    with favorites_connection() as db:
+        db.execute('PRAGMA journal_mode=WAL')
+        db.execute('CREATE TABLE IF NOT EXISTS favorites (track_id TEXT PRIMARY KEY)')
+    def favorite_ids():
+        with favorites_connection() as db:return [r[0] for r in db.execute('SELECT track_id FROM favorites ORDER BY track_id')]
     origins={'https://paulycee.com','https://www.paulycee.com','http://127.0.0.1:4187','http://localhost:4187'}
     class Handler(BaseHTTPRequestHandler):
         def log_message(self,*args):pass # Never log access headers or audio requests.
@@ -34,13 +45,49 @@ def main():
             self.send_header('Vary','Origin');self.send_header('Cache-Control','no-store');self.send_header('X-Content-Type-Options','nosniff');self.send_header('Referrer-Policy','no-referrer');super().end_headers()
         def do_OPTIONS(self):
             if self.headers.get('Origin','') not in origins:self.send_error(403);return
-            self.send_response(204);self.send_header('Access-Control-Allow-Headers','Authorization,Range');self.send_header('Access-Control-Allow-Methods','GET,HEAD,OPTIONS');self.end_headers()
+            self.send_response(204);self.send_header('Access-Control-Allow-Headers','Authorization,Range,Content-Type');self.send_header('Access-Control-Allow-Methods','GET,HEAD,PUT,POST,OPTIONS');self.end_headers()
+        def authorized(self):
+            if self.headers.get('Origin') and self.headers['Origin'] not in origins:self.send_error(403);return False
+            if not a.public and not hmac.compare_digest(self.headers.get('Authorization','').encode(),'Bearer '.encode()+key.encode()):self.send_error(401,'Access key required');return False
+            return True
+        def json_response(self,value,head=False):
+            data=json.dumps(value).encode();self.send_response(200);self.send_header('Content-Type','application/json');self.send_header('Content-Length',str(len(data)));self.end_headers()
+            if not head:self.wfile.write(data)
+        def do_PUT(self):self.write_favorites()
+        def do_POST(self):self.write_favorites()
+        def write_favorites(self):
+            if not self.authorized():return
+            route=urllib.parse.urlsplit(self.path).path
+            match=re.fullmatch(r'/favorites/(\d+)',route)
+            if not ((self.command=='PUT' and match) or (self.command=='POST' and route=='/favorites/import')):self.send_error(404);return
+            try:
+                length=int(self.headers.get('Content-Length','0'))
+                if length<=0 or length>262144 or not self.headers.get('Content-Type','').startswith('application/json'):self.send_error(400);return
+                body=json.loads(self.rfile.read(length))
+                if not isinstance(body,dict):raise ValueError()
+                if match:
+                    selected=body.get('favorite')
+                    if type(selected) is not bool:raise ValueError()
+                    if selected and match[1] not in paths:self.send_error(404);return
+                    with favorites_connection() as db:
+                        if selected:db.execute('INSERT OR IGNORE INTO favorites(track_id) VALUES (?)',(match[1],))
+                        else:db.execute('DELETE FROM favorites WHERE track_id=?',(match[1],))
+                else:
+                    ids=body.get('ids')
+                    if not isinstance(ids,list) or len(ids)>20000 or not all(isinstance(id,str) for id in ids):raise ValueError()
+                    with favorites_connection() as db:db.executemany('INSERT OR IGNORE INTO favorites(track_id) VALUES (?)',[(id,) for id in set(ids) if id in paths])
+                self.json_response({'ids':favorite_ids()})
+            except (ValueError,TypeError,json.JSONDecodeError):self.send_error(400,'Invalid favorites request')
+            except sqlite3.Error:self.send_error(503,'Cannot save favorites on the PC')
         def do_HEAD(self):self.handle_request(True)
         def do_GET(self):self.handle_request(False)
         def handle_request(self,head):
-            if self.headers.get('Origin') and self.headers['Origin'] not in origins:self.send_error(403);return
-            if not a.public and not hmac.compare_digest(self.headers.get('Authorization','').encode(),'Bearer '.encode()+key.encode()):self.send_error(401,'Access key required');return
+            if not self.authorized():return
             route=urllib.parse.urlsplit(self.path).path
+            if route=='/favorites':
+                try:self.json_response({'ids':favorite_ids()},head)
+                except sqlite3.Error:self.send_error(503,'Cannot read favorites on the PC')
+                return
             if route=='/library':
                 try:
                     with lock:
