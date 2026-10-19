@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+import {favoriteOrder,keyCode} from './order.js';
+import {syncRate,bassAt,makeStreamPlan} from './mixer.js';
+const tracks=[{id:'1',name:'One',bpm:130,key:'Am'},{id:'2',name:'Two',bpm:125,key:'C'},{id:'3',name:'Three',bpm:0,key:''}];
+assert.deepEqual(favoriteOrder(tracks).map(t=>t.id),['2','1','3']);
+assert.deepEqual(favoriteOrder(tracks,{sort:'bpm-desc'}).map(t=>t.id),['1','2','3']);
+assert.equal(keyCode('Am'),'8A');assert.equal(keyCode('C'),'8B');assert.equal(keyCode('F#m'),'11A');
+assert.deepEqual(favoriteOrder(tracks,{key:'8A',min:'128'}).map(t=>t.id),['1']);
+assert.equal(favoriteOrder(tracks,{key:'unknown'}).length,1);
+assert.equal(syncRate(0),1);assert.equal(syncRate(1),1.025);assert.equal(syncRate(-1),.975);
+const p=makeStreamPlan([{duration:120,bpm:120},{duration:120,bpm:120}],120);
+assert.equal(bassAt(p[1],p[1].start),-24);assert.equal(bassAt(p[0],p[1].start+8),-24);
+assert.equal(bassAt(p[1],p[1].start+16),0);
+console.log('PASS favorites filters/order, key normalization, bounded drift correction and bass handover');

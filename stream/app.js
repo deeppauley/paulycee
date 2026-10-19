@@ -1,10 +1,21 @@
-import {StreamMixer,gainAt} from './mixer.js?v=20261018-public';
+import {StreamMixer,gainAt} from './mixer.js?v=20261019-tight-sync';
+import {favoriteOrder} from './order.js';
 const $=s=>document.querySelector(s),status=t=>{$('#status').textContent=t;};
 const fmt=n=>{n=Math.max(0,Math.floor(n||0));return Math.floor(n/60)+':'+String(n%60).padStart(2,'0');};
 let server='',catalog={tracks:[],playlists:[]},visible=[],favoriteOnly=false,query='',connected=false,lastIndex=-1,lastMetadata='',connecting=false,rowLimit=200;
 let favorites=new Set(),favoriteWrites=Promise.resolve(),syncingFavorites=false;
 const pendingFavorites=new Set();
 const requests=new Set();
+const filters=document.createElement('div');filters.className='toolbar';filters.hidden=true;
+filters.innerHTML='<label>Favorites order<select id="favorite-sort"><option value="bpm-asc">BPM: slowest first</option><option value="bpm-desc">BPM: fastest first</option><option value="key-asc">Key: Camelot ascending</option><option value="key-desc">Key: Camelot descending</option></select></label><label>Min BPM<input id="bpm-min" type="number" min="1" max="300" placeholder="Any"></label><label>Max BPM<input id="bpm-max" type="number" min="1" max="300" placeholder="Any"></label><label>Key<select id="key-filter"><option value="">All keys</option><option value="unknown">Unknown key</option></select></label>';
+document.querySelector('.toolbar').after(filters);
+for(let n=1;n<=12;n++)for(const letter of ['A','B'])$('#key-filter').add(new Option(n+letter,n+letter));
+for(const input of filters.querySelectorAll('input,select'))input.onchange=()=>applyPlaylist();
+const nudges=document.createElement('div');nudges.className='settings';
+nudges.innerHTML='<span class="note">Off-grid incoming track?</span><button id="nudge-back" type="button">−20 ms</button><button id="nudge-forward" type="button">+20 ms</button><span id="nudge-value" class="note">0 ms · resets when track reloads</span>';
+document.querySelector('.player>.note').before(nudges);
+for(const [id,delta]of [['#nudge-back',-.02],['#nudge-forward',.02]])$(id).onclick=()=>{const n=mixer.nudge(delta);if(n!==undefined)$('#nudge-value').textContent=Math.round(n*1000)+' ms';};
+document.querySelector('.player>.note').textContent='32-beat transitions use Rekordbox grids, gentle playback-drift correction and a bass handover. Incorrect grids still need correction: use ±20 ms to shift the incoming track by ear. This is not automatic audio beat detection. Speed changes affect pitch. Keep this page open for mixing; screen-lock playback is browser-dependent.';
 async function request(path,kind='json',options={}){
   if(!connected&&path!='/library')throw Error('Connect to your PC first.');
   const controller=new AbortController();requests.add(controller);const timer=setTimeout(()=>controller.abort(),180000);
@@ -33,8 +44,8 @@ function toggleFavorite(id){
     finally{pendingFavorites.delete(id);if(connected){renderRows();update();}}
   });
 }
-function playlistTracks(){if(favoriteOnly)return catalog.tracks.filter(t=>favorites.has(t.id));const chosen=$('#playlist').value;const byid=new Map(catalog.tracks.map(t=>[t.id,t]));const ids=chosen==='all'?catalog.tracks.map(t=>t.id):catalog.playlists.find(p=>p.id===chosen)?.tracks||[];return ids.map(id=>byid.get(id)).filter(Boolean);}
-function applyPlaylist(){rowLimit=200;mixer.setQueue(playlistTracks().filter(t=>t.available&&t.duration>0),Number($('#tempo').value));lastIndex=-1;renderRows();status(mixer.plan.length+' playable tracks in this queue.');}
+function playlistTracks(){if(favoriteOnly)return favoriteOrder(catalog.tracks.filter(t=>favorites.has(t.id)),{sort:$('#favorite-sort').value,min:$('#bpm-min').value,max:$('#bpm-max').value,key:$('#key-filter').value});const chosen=$('#playlist').value;const byid=new Map(catalog.tracks.map(t=>[t.id,t]));const ids=chosen==='all'?catalog.tracks.map(t=>t.id):catalog.playlists.find(p=>p.id===chosen)?.tracks||[];return ids.map(id=>byid.get(id)).filter(Boolean);}
+function applyPlaylist(){rowLimit=200;mixer.setQueue(playlistTracks().filter(t=>t.available&&t.duration>0),Number($('#tempo').value));lastIndex=-1;renderRows();status(mixer.plan.length+' playable tracks in this queue. Filters and sorting set playback order; press Play to begin.');}
 function renderRows(){
   visible=playlistTracks().filter(t=>!query||(t.name+' '+t.artist).toLowerCase().includes(query));const rows=$('#tracks');rows.replaceChildren();
   $('#queue-title').textContent=favoriteOnly?'Global favorites':$('#playlist').selectedOptions[0]?.textContent||'Collection';
@@ -57,6 +68,8 @@ function update(){
   $('#play').textContent=mixer.loading?'Loading…':mixer.playing?'Ⅱ Pause':'▶ Play';$('#play').disabled=mixer.loading||!item;
   for(const id of ['#jump','#previous','#next','#seek','#favorite-current'])$(id).disabled=mixer.loading||!item;
   $('#tempo').disabled=mixer.loading;
+  $('#nudge-back').disabled=$('#nudge-forward').disabled=mixer.loading||!item;
+  const currentDeck=mixer.decks[item?.index%2];$('#nudge-value').textContent=Math.round((currentDeck?.item===item?currentDeck?.nudge||0:0)*1000)+' ms';
   if(!item){$('#now-title').textContent='Choose a track';$('#now-artist').textContent='Start a playlist to hear your next mix.';$('#next-title').textContent='—';$('#metrics').textContent='32-BEAT AUTOMIX';$('#elapsed').textContent='0:00';$('#duration').textContent='0:00';$('#blend').value=0;$('#mix-state').textContent='';return;}
   $('#now-title').textContent=item.track.name;$('#now-artist').textContent=item.track.artist||'Unknown artist';$('#next-title').textContent=next?.track.name||'End of playlist';
   $('#metrics').textContent=`${mixer.tempo} BPM MIX · ${item.track.key||'KEY UNKNOWN'} · ${item.synced?'BEAT SYNC':'NATURAL SPEED'}`;
@@ -95,10 +108,10 @@ $('#connection').onsubmit=e=>{e.preventDefault();connect();};
 $('#disconnect').onclick=()=>{for(const r of requests)r.abort();mixer.clear();connected=false;catalog={tracks:[],playlists:[]};$('#room').hidden=true;$('#connect').hidden=false;$('#disconnect').hidden=true;if('mediaSession'in navigator){navigator.mediaSession.metadata=null;navigator.mediaSession.playbackState='none';}status('Disconnected. Global favorites are saved on the server.');};
 $('#refresh').onclick=async()=>{if(mixer.loading){status('Wait for the current track to finish loading before refreshing.');return;}mixer.pause();$('#server').value=server;await connect();};
 $('#playlist').onchange=applyPlaylist;
-$('#favorites').onclick=()=>{favoriteOnly=!favoriteOnly;$('#favorites').setAttribute('aria-pressed',String(favoriteOnly));applyPlaylist();};
+$('#favorites').onclick=()=>{favoriteOnly=!favoriteOnly;filters.hidden=!favoriteOnly;$('#favorites').setAttribute('aria-pressed',String(favoriteOnly));applyPlaylist();};
 $('#search').oninput=e=>{rowLimit=200;query=e.target.value.trim().toLowerCase();renderRows();};
 $('#load-more').onclick=()=>{rowLimit+=200;renderRows();};
-$('#play').onclick=()=>{if(mixer.playing)mixer.pause();else{status('Preparing audio from your PC…');mixer.play().then(()=>{if(mixer.playing)status('Streaming from PC · 32-beat automix.');});}};
+$('#play').onclick=()=>{if(mixer.playing)mixer.pause();else{if(favoriteOnly&&playlistTracks().filter(t=>t.available&&t.duration>0).map(t=>t.id).join(',')!==mixer.tracks.map(t=>t.id).join(','))applyPlaylist();status('Preparing audio from your PC…');mixer.play().then(()=>{if(mixer.playing)status('Streaming from PC · 32-beat automix.');});}};
 $('#previous').onclick=()=>mixer.seek(mixer.plan[Math.max(0,mixer.index()-1)]?.start||0,true);
 $('#next').onclick=()=>{const next=mixer.plan[mixer.index()+1];if(next)mixer.seek(next.start,true);else status('You are at the last track.');};
 $('#jump').onclick=()=>{const next=mixer.plan[mixer.index()+1];if(next)mixer.seek(next.start,true);else status('No next transition in this playlist.');};

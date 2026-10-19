@@ -30,6 +30,21 @@ def main():
                 second.reload();second.wait_for_selector('#room',state='visible')
                 assert second.locator('#favorite-count').inner_text()=='2'
                 assert second.evaluate("localStorage.getItem('pauly-stream-favorites')") is None
+                second.locator('#favorites').click()
+                assert second.locator('.track strong').all_text_contents()==['Tone 1','Tone 2']
+                second.locator('#favorite-sort').select_option('bpm-desc')
+                assert second.locator('.track strong').all_text_contents()==['Tone 2','Tone 1']
+                second.locator('#bpm-min').fill('125');second.locator('#bpm-min').dispatch_event('change')
+                assert second.locator('.track strong').all_text_contents()==['Tone 2']
+                second.locator('#bpm-min').fill('');second.locator('#bpm-min').dispatch_event('change')
+                second.locator('#favorite-sort').select_option('bpm-asc')
+                second.locator('#play').click();second.wait_for_function("document.querySelector('#play').textContent.includes('Pause')")
+                assert second.locator('#now-title').inner_text()=='Tone 1'
+                second.locator('#jump').click();second.wait_for_function("document.querySelector('#mix-state').textContent.includes('MIXING')")
+                assert second.locator('#now-title').inner_text()=='Tone 2'
+                second.wait_for_function("document.querySelector('#play').textContent.includes('Pause')")
+                second.locator('#nudge-forward').click();assert second.locator('#nudge-value').inner_text()=='20 ms'
+                second.locator('#play').click();second.locator('#favorites').click()
                 second.locator('.track').nth(1).locator('button').first.click();second.wait_for_function("document.querySelector('#favorite-count').textContent==='1'")
                 other.close()
                 page.reload();page.wait_for_selector('#room',state='visible');assert page.locator('#favorite-count').inner_text()=='1'

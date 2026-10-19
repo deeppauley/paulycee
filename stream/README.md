@@ -23,6 +23,13 @@ The mixer uses the first playable track's BPM as the session tempo (editable). I
 MP3/M4A/AAC are served directly with HTTP byte ranges. WAV and other formats transcode to stereo AAC on demand in the runtime folder, never the repo, to avoid transferring huge lossless originals. The PC must stay awake with its source drives connected. Upload speed limits remote playback; the next track is buffered ahead of the overlap. Codec support depends on the browser. Incompatible M4A codecs may need manual conversion.
 
 ## Stop and restart
+## Favorites ordering and transition correction
+
+Favorites default to ascending BPM. BPM range and normalized Camelot-key filters, and ascending/descending BPM/key sorting, define the automix queue as well as the displayed list. Unknown BPM/key sort last. Changing these controls stops playback; press Play to start the new queue. Text search only narrows the displayed rows.
+
+The streaming decks now gently correct transport drift (maximum 2.5% correction) and hand over low frequencies during the 32-beat overlap. This is not audio-based beat detection or automatic repair of bad Rekordbox grids. Use ±20 ms on the current/incoming deck to correct a misaligned grid by ear (maximum ±500 ms, reset on track reload). Tempo changes still affect pitch. Global favorites remain on the PC server; audio is not uploaded to Git.
+
+## Stop and restart
 
 ```
 python stream/manage.py status --state "C:\Users\paule\Desktop\Pauly Cee Stream Server"
