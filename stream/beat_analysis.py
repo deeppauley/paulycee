@@ -5,7 +5,7 @@ All decoded audio and rendered files remain in the external PC runtime cache.
 import hashlib,json,os,pathlib,secrets,subprocess,threading
 import numpy as np
 
-VERSION='steady-v2'
+VERSION='smooth-v3'
 _lock=threading.Lock()
 
 def pcm(path,start,length):
@@ -68,14 +68,16 @@ def prepare(source,track,tempo,cache):
         # Only refine the global BPM when independently measured ends agree.
         measured=(head['bpm']+tail['bpm'])/2 if head and tail and abs(head['bpm']-tail['bpm'])<.35 else bpm
         rate=tempo/measured if measured>0 else 1
-        # atempo handles pitch-preserving time stretch; browser rate stays exactly 1.
-        factors=[];factor=rate
-        while factor>2:factors.append(2);factor/=2
-        while factor<.5:factors.append(.5);factor/=.5
-        factors.append(factor)
+        # Avoid needless time stretching when the tempos already match. Rubber Band
+        # handles stereo music with linked channels and smoothed, preserved pitch.
+        if abs(rate-1)<.0005:
+            rate=1
+            processing=[]
+        else:
+            processing=['-af',f'rubberband=tempo={rate:.9f}:pitch=1:transients=mixed:detector=compound:phase=laminar:smoothing=on:channels=together']
         temp=cache/(token+'-'+secrets.token_hex(4)+'.m4a')
         try:
-            subprocess.run(['ffmpeg','-y','-v','error','-i',str(source),'-vn','-af',','.join(f'atempo={f:.9f}' for f in factors),'-ac','2','-c:a','aac','-b:a','192k','-map_metadata','-1','-movflags','+faststart',str(temp)],check=True,capture_output=True,timeout=180)
+            subprocess.run(['ffmpeg','-y','-v','error','-i',str(source),'-vn',*processing,'-ac','2','-ar','44100','-c:a','aac','-b:a','192k','-map_metadata','-1','-movflags','+faststart',str(temp)],check=True,capture_output=True,timeout=180)
             length=duration(temp)
             # Measure the actual rendered stream, including time-stretch encoder delay.
             first=estimate(pcm(temp,0,min(64,length)),tempo)

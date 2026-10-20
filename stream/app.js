@@ -1,4 +1,4 @@
-import {StreamMixer,gainAt} from './mixer.js?v=20261019-steady-server';
+import {StreamMixer,gainAt} from './mixer.js?v=20261020-smooth-buffer';
 import {favoriteOrder} from './order.js';
 const $=s=>document.querySelector(s),status=t=>{$('#status').textContent=t;};
 const fmt=n=>{n=Math.max(0,Math.floor(n||0));return Math.floor(n/60)+':'+String(n%60).padStart(2,'0');};

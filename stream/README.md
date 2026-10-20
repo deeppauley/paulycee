@@ -32,6 +32,10 @@ The browser always plays prepared audio at rate 1, follows the audible outgoing 
 
 ## Stop and restart
 
+To restart **only** the audio backend without changing the tunnel address, run `stream/Restart Audio Backend.ps1` locally. It verifies the recorded server identity before stopping it, starts the updated backend hidden, and leaves the tunnel process running.
+
+Audio preparation uses FFmpeg Rubber Band with stereo-linked channels and smoothing, or bypasses stretching for matching tempos. Versioned caches invalidate earlier `atempo` renders. The client buffers up to 3 seconds before starting and debounces transient `waiting` events to avoid immediate pause/reseek loops.
+
 ```
 python stream/manage.py status --state "C:\Users\paule\Desktop\Pauly Cee Stream Server"
 python stream/manage.py stop --state "C:\Users\paule\Desktop\Pauly Cee Stream Server"

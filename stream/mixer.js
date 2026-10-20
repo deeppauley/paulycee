@@ -46,10 +46,12 @@ export class StreamMixer{
         });
         audio.addEventListener('error',()=>{if(this.playing&&!deck.starting&&deck.item&&this.time()>=deck.item.start&&this.time()<deck.item.end)this.fail(Error('Audio stream was interrupted. Press Play to retry.'));});
         audio.addEventListener('waiting',()=>{
-          if(!this.playing||deck.starting||!deck.item||this.time()<deck.item.start)return;
-          this.pause();const token=this.epoch;this.loading=true;this.onchange();this.onerror(Error('Buffering audio from the PC…'));
-          const resume=()=>{if(this.epoch===token){this.loading=false;this.play();}};
-          audio.addEventListener('canplay',resume,{once:true});
+          clearTimeout(deck.bufferTimer);
+          deck.bufferTimer=setTimeout(()=>{
+            if(!this.playing||deck.starting||audio.seeking||audio.readyState>=3||!deck.item||this.time()<deck.item.start)return;
+            this.pause();const token=this.epoch;this.loading=true;this.onchange();this.onerror(Error('Buffering audio from the PC…'));
+            this.buffered(deck,token).then(()=>{if(this.epoch===token){this.loading=false;this.play();}}).catch(e=>{if(this.epoch===token)this.fail(e);});
+          },400);
         });
       }
     }
@@ -92,7 +94,7 @@ export class StreamMixer{
     })();
     deck.ready.catch(error=>{if(deck.item===item)deck.error=error;});return deck;
   }
-  pause(){this.offset=this.time();this.playing=false;this.loading=false;this.epoch++;clearInterval(this.timer);for(const d of this.decks){d.audio.pause();d.gain.gain.cancelScheduledValues(this.ctx.currentTime);d.gain.gain.value=0;}this.wake?.release().catch(()=>{});this.wake=null;this.onchange();}
+  pause(){this.offset=this.time();this.playing=false;this.loading=false;this.epoch++;clearInterval(this.timer);for(const d of this.decks){clearTimeout(d.bufferTimer);d.audio.pause();d.gain.gain.cancelScheduledValues(this.ctx.currentTime);d.gain.gain.value=0;}this.wake?.release().catch(()=>{});this.wake=null;this.onchange();}
   unload(){for(const d of this.decks){d.item=null;d.audio.removeAttribute('src');d.audio.load();}}
   clear(){this.pause();this.unload();this.plan=[];this.tracks=[];this.offset=0;this.onchange();}
   rate(item,position){return item.track.prepared?1:item.synced?this.tempo/(item.track.bpm||this.tempo):1;}
@@ -104,12 +106,23 @@ export class StreamMixer{
     else if(!(item.fadeOut&&start>=item.end-item.fadeOut))param.setValueAtTime(gainAt(item,start),ctx.currentTime);
     ramp(item.end-item.fadeOut,item.end);
   }
+  async buffered(deck,token){
+    const audio=deck.audio,deadline=performance.now()+20000;
+    while(token===this.epoch){
+      if(audio.error)throw Error('Audio buffering failed. Press Play to retry.');
+      const position=audio.currentTime,needed=Math.min(3,Math.max(0,audio.duration-position-.05));
+      for(let i=0;i<audio.buffered.length;i++)if(!audio.seeking&&audio.buffered.start(i)<=position+.05&&audio.buffered.end(i)>=position+needed)return;
+      if(performance.now()>deadline){if(audio.readyState>=3)return;throw Error('The connection is too slow to buffer audio. Press Play to retry.');}
+      await new Promise(resolve=>setTimeout(resolve,80));
+    }
+  }
   async startDeck(item,token){
     const deck=this.prepare(item);if(deck.starting)return;deck.starting=true;
     try{
       await deck.ready;if(token!==this.epoch||deck.item!==item)return;
       const position=Math.min(deck.audio.duration-.01,Math.max(0,item.source(Math.max(0,this.time()-item.start))));
       deck.audio.currentTime=position;deck.audio.playbackRate=this.rate(item,position);
+      await this.buffered(deck,token);if(token!==this.epoch)return;
       await deck.audio.play();if(token!==this.epoch){deck.audio.pause();return;}
       // Catch up to the shared beat clock if the browser needed time to start.
       const expected=item.source(Math.max(0,this.time()-item.start));
