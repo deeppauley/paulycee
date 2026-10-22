@@ -73,7 +73,7 @@ def main():
                 page.locator('#search').fill('Tone 2');assert page.locator('.track').count()==1
                 page.locator('#disconnect').click();assert page.locator('#connect').is_visible();assert not errors,errors
                 page.route(base+'/audio/1002?*',lambda route:route.fulfill(status=503,body='Unavailable test track'))
-                page.reload();page.wait_for_selector('#room',state='visible');page.locator('#playback-mode').select_option('mix');page.locator('#play').click()
+                page.reload();page.wait_for_selector('#room',state='visible');page.locator('#reset-samples').click();page.locator('#playback-mode').select_option('mix');page.locator('#play').click()
                 page.wait_for_function("document.querySelector('#play').textContent.includes('Pause')",timeout=10000)
                 page.wait_for_timeout(4000)
                 assert 'Pause' in page.locator('#play').inner_text(),'A failed next-track preload stopped current audio'

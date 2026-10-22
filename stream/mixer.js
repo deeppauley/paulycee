@@ -31,7 +31,7 @@ export function bassAt(item,time){
 }
 
 export class StreamMixer{
-  constructor({url,prepareTrack,onchange,onerror}){this.url=url;this.prepareTrack=prepareTrack;this.onchange=onchange;this.onerror=onerror;this.decks=[];this.failed=new Set();this.plan=[];this.tempo=120;this.offset=0;this.playing=false;this.epoch=0;this.volume=.8;this.loading=false;}
+  constructor({url,prepareTrack,onchange,onerror,onstarted=()=>{},canPlay=()=>true}){this.url=url;this.prepareTrack=prepareTrack;this.onchange=onchange;this.onerror=onerror;this.onstarted=onstarted;this.canPlay=canPlay;this.decks=[];this.failed=new Set();this.plan=[];this.tempo=120;this.offset=0;this.playing=false;this.epoch=0;this.volume=.8;this.loading=false;}
   context(){
     if(!this.ctx){
       this.ctx=new AudioContext();this.master=this.ctx.createGain();this.master.gain.value=this.volume;this.master.connect(this.ctx.destination);
@@ -67,10 +67,10 @@ export class StreamMixer{
     return this.offset;
   }
   index(){return (this.plan.findLast(p=>p.start<=this.time()+.001)||this.plan[0])?.index||0;}
-  setQueue(tracks,tempo=this.tempo){this.pause();this.unload();this.tempo=tempo;this.tracks=tracks.map(t=>{const original=t._original||t;return {...original,_original:original};});this.plan=makeStreamPlan(this.tracks,tempo);this.offset=0;this.failed.clear();this.onchange();}
+  setQueue(tracks,tempo=this.tempo){this.pause();this.unload();this.resumeId=null;this.tempo=tempo;this.tracks=tracks.map(t=>{const original=t._original||t;return {...original,_original:original};});this.plan=makeStreamPlan(this.tracks,tempo);this.offset=0;this.failed.clear();this.onchange();}
   prepare(item){
     this.context();const deck=this.decks[item.index%2];if(deck.item===item)return deck;
-    deck.audio.pause();deck.item=item;deck.error=null;deck.gain.gain.cancelScheduledValues(this.ctx.currentTime);deck.gain.gain.value=0;
+    deck.audio.pause();deck.item=item;deck.started=false;deck.error=null;deck.gain.gain.cancelScheduledValues(this.ctx.currentTime);deck.gain.gain.value=0;
     const audio=deck.audio;
     const queue=this.plan;
     deck.ready=(async()=>{
@@ -120,6 +120,7 @@ export class StreamMixer{
     const deck=this.prepare(item);if(deck.starting)return;deck.starting=true;
     try{
       await deck.ready;if(token!==this.epoch||deck.item!==item)return;
+      if(!deck.started&&this.resumeId!==item.track.id&&!this.canPlay(item.track))throw Error('Skipped a sampled track or excluded Favorite.');
       const position=Math.min(deck.audio.duration-.01,Math.max(0,item.source(Math.max(0,this.time()-item.start))));
       deck.audio.currentTime=position;deck.audio.playbackRate=this.rate(item,position);
       await this.buffered(deck,token);if(token!==this.epoch)return;
@@ -128,9 +129,10 @@ export class StreamMixer{
       const expected=item.source(Math.max(0,this.time()-item.start));
       if(!this.loading&&Math.abs(deck.audio.currentTime-expected)>.06)deck.audio.currentTime=Math.min(deck.audio.duration-.01,expected);
       this.envelope(deck,this.time());
+      if(!deck.started){deck.started=true;if(this.resumeId===item.track.id)this.resumeId=null;this.onstarted(item.track);}
     }finally{deck.starting=false;}
   }
-  skipFailed(index){const next=this.plan.slice(index+1).find(p=>!this.failed.has(p.index));if(next)this.seek(next.start,true);else{this.pause();this.onerror(Error('No more playable tracks in this queue.'));}}
+  skipFailed(index){const next=this.plan.slice(index+1).find(p=>!this.failed.has(p.index)&&this.canPlay(p.track));if(next)this.seek(next.start,true);else{this.pause();this.onerror(Error('No more unheard eligible tracks in this queue.'));}}
   preloadNext(){const next=this.plan[this.index()+1];
     // During an overlap both decks are occupied; wait to reuse the outgoing deck.
     if(this.plan.filter(p=>p.start<=this.time()&&p.end>this.time()).length>1)return;
@@ -179,4 +181,10 @@ export class StreamMixer{
   }
   async seek(time,autoplay=this.playing){this.pause();this.offset=Math.max(0,Math.min(this.plan.at(-1)?.end||0,time));this.onchange();if(autoplay)await this.play();}
   setVolume(value){this.volume=value;if(this.master)this.master.gain.setTargetAtTime(value,this.ctx.currentTime,.02);}
+  replaceUpcoming(tracks){
+    const index=this.index();this.tracks=[...this.tracks.slice(0,index+1),...tracks.map(t=>{const original=t._original||t;return {...original,_original:original};})];
+    for(const d of this.decks)if(d.item?.index>index){d.audio.pause();d.item=null;d.audio.removeAttribute('src');d.audio.load();}
+    const rebuilt=makeStreamPlan(this.tracks,this.tempo);for(let i=0;i<=index;i++){Object.assign(this.plan[i],rebuilt[i]);rebuilt[i]=this.plan[i];}this.plan=rebuilt;
+    this.failed=new Set([...this.failed].filter(i=>i<=index));if(this.playing){for(const d of this.decks)if(d.item&&!d.audio.paused)this.envelope(d,this.time());this.preloadNext();}this.onchange();
+  }
 }

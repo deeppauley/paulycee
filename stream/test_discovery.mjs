@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import {audioKey,eligible,shuffled,harmonicCompatibility,mixScore,candidates} from './discovery.js';
+const tracks=[{id:'a',audioId:'same',name:'A',available:true,duration:60,bpm:125,key:'8A'},{id:'alias',audioId:'same',name:'Alias',available:true,duration:60,bpm:125,key:'8A'},{id:'b',audioId:'b',name:'B',available:true,duration:60,bpm:126,key:'9A',energy:.7},{id:'c',audioId:'c',name:'C',available:true,duration:60,bpm:150,key:'3B',energy:.1}];
+assert.deepEqual(eligible(tracks).map(t=>t.id),['a','b','c']);
+assert.deepEqual(eligible(tracks,{heard:new Set(['same'])}).map(t=>t.id),['b','c']);
+assert.deepEqual(eligible(tracks,{favorites:new Set(['b']),avoidFavorites:true,heard:new Set(['same'])}).map(t=>t.id),['c']);
+assert.equal(harmonicCompatibility('12A','1A').label,'Adjacent Camelot key');
+assert.equal(harmonicCompatibility('Am','C').label,'Relative major/minor');
+assert.equal(harmonicCompatibility('','8A').known,false);
+assert.ok(mixScore({...tracks[0],energy:.7},tracks[2]).score>mixScore({...tracks[0],energy:.7},tracks[3]).score);
+assert.equal(candidates(tracks[0],tracks.slice(2),1)[0].track.id,'b');
+const mixed=shuffled(tracks,()=>0);assert.notDeepEqual(mixed.map(t=>t.id),tracks.map(t=>t.id));assert.deepEqual(new Set(mixed.map(t=>t.id)),new Set(tracks.map(t=>t.id)));
+assert.equal(audioKey(tracks[0]),audioKey(tracks[1]));console.log('PASS shuffle permutation, duplicate/played/Favorite exclusion, Camelot compatibility, BPM/energy ranking');

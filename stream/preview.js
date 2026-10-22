@@ -1,7 +1,7 @@
 // Native single-deck playback: no AudioContext, tempo processing, fades or clock servo.
 export function previewPlan(tracks){let start=0;return tracks.map((track,index)=>{const item={track,index,start,end:start+track.duration,duration:track.duration,intro:0,outro:track.duration,synced:false,fadeIn:0,fadeOut:0,source:t=>t,local:t=>t};start=item.end;return item;});}
 export class PreviewPlayer{
-  constructor({url,cue,onchange,onerror}){Object.assign(this,{url,cue,onchange,onerror});this.tracks=[];this.plan=[];this.cursor=0;this.offset=0;this.epoch=0;this.volume=.8;this.tempo=120;this.playing=false;this.loading=false;this.fresh=true;this.cues=new Map();}
+  constructor({url,cue,onchange,onerror,onstarted=()=>{},canPlay=()=>true}){Object.assign(this,{url,cue,onchange,onerror,onstarted,canPlay});this.tracks=[];this.plan=[];this.cursor=0;this.offset=0;this.epoch=0;this.volume=.8;this.tempo=120;this.playing=false;this.loading=false;this.fresh=true;this.cues=new Map();}
   context(){
     if(!this.audio){
       const a=this.audio=new Audio();a.crossOrigin='anonymous';a.preload='auto';a.preservesPitch=true;a.playbackRate=1;a.defaultPlaybackRate=1;a.volume=this.volume;a.setAttribute('playsinline','');
@@ -15,7 +15,7 @@ export class PreviewPlayer{
   index(){return this.cursor;}
   time(){const item=this.plan[this.cursor];return item&&this.loaded===item.track.id&&this.audio?.readyState?item.start+this.audio.currentTime:this.offset;}
   pause(){this.offset=this.time();this.epoch++;this.playing=false;this.loading=false;this.audio?.pause();this.onchange();}
-  setQueue(tracks,tempo=120){this.pause();this.unload();this.tempo=tempo;this.tracks=tracks.map(t=>({...t._original||t}));this.plan=previewPlan(this.tracks);this.cursor=0;this.offset=0;this.fresh=true;this.onchange();}
+  setQueue(tracks,tempo=120){this.pause();this.unload();this.resumeCurrent=false;this.tempo=tempo;this.tracks=tracks.map(t=>({...t._original||t}));this.plan=previewPlan(this.tracks);this.cursor=0;this.offset=0;this.fresh=true;this.onchange();}
   unload(){this.cancelLoad?.();if(this.audio){this.audio.removeAttribute('src');this.audio.load();}this.loaded=null;}
   clear(){this.pause();this.unload();this.tracks=[];this.plan=[];this.cursor=0;this.offset=0;this.onchange();}
   async load(item){
@@ -31,6 +31,7 @@ export class PreviewPlayer{
   }
   async play(){
     if(this.playing||this.loading||!this.plan.length)return;
+    if(this.fresh&&!this.resumeCurrent&&!this.canPlay(this.plan[this.cursor].track)){const next=this.plan.find(p=>p.index>this.cursor&&this.canPlay(p.track));if(next)return this.open(next.index,true);this.onerror(Error('No unheard eligible tracks remain. Reset session history to sample again.'));return;}
     const token=++this.epoch,item=this.plan[this.cursor];this.loading=true;this.onchange();
     try{
       try{if(navigator.audioSession)navigator.audioSession.type='playback';}catch{}
@@ -45,11 +46,13 @@ export class PreviewPlayer{
       if(Math.abs(a.currentTime-position)>.05)a.currentTime=position;
       await a.play();if(token!==this.epoch){a.pause();return;}
       this.playing=true;this.fresh=false;
+      this.resumeCurrent=false;this.onstarted(current.track);
     }catch(e){if(token===this.epoch){this.playing=false;this.onerror(e);}}
     finally{if(token===this.epoch){this.loading=false;this.onchange();}}
   }
-  async open(index,autoplay=true){this.pause();this.cursor=Math.max(0,Math.min(index,this.plan.length-1));this.offset=this.plan[this.cursor]?.start||0;this.fresh=true;this.onchange();if(autoplay)await this.play();}
+  async open(index,autoplay=true,resumeCurrent=false){this.pause();this.cursor=Math.max(0,Math.min(index,this.plan.length-1));this.offset=this.plan[this.cursor]?.start||0;this.fresh=true;this.resumeCurrent=resumeCurrent;this.onchange();if(autoplay)await this.play();}
   async seek(time,autoplay=this.playing){this.pause();const item=this.plan.findLast(p=>p.start<=time)||this.plan[0];if(!item)return;this.cursor=item.index;this.offset=Math.max(item.start,Math.min(item.end-.01,time));this.fresh=false;if(this.loaded===item.track.id&&this.audio?.readyState)this.audio.currentTime=this.offset-item.start;this.onchange();if(autoplay)await this.play();}
-  async jumpChorus(){await this.open(this.cursor,true);}
+  async jumpChorus(){await this.open(this.cursor,true,true);}
+  replaceUpcoming(tracks){this.tracks=[...this.tracks.slice(0,this.cursor+1),...tracks.map(t=>({...t._original||t}))];this.plan=previewPlan(this.tracks);this.onchange();}
   setVolume(value){this.volume=value;if(this.audio)this.audio.volume=value;}
 }

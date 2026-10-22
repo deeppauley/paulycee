@@ -35,6 +35,9 @@ def main():
             with get('/preview/1001') as response:preview=json.load(response)
             assert 0<=preview['position']<preview['duration'] and preview['originalSpeed']
             assert str(root) not in json.dumps(preview)
+            assert catalog['tracks'][0]['audioId'] and len(catalog['tracks'][0]['audioId'])==24
+            with get('/energy/1001') as response:energy=json.load(response)
+            assert energy['energy'] is None or 0<=energy['energy']<=1
             with get('/prepare/1001?tempo=125') as response:prepared=json.load(response)
             assert prepared['prepared'] and prepared['bpm']==125 and prepared['mixBeats']==8
             assert str(root) not in json.dumps(prepared)
@@ -53,6 +56,10 @@ def main():
             def write(path,body,method='PUT'):
                 req=urllib.request.Request(base+path,data=json.dumps(body).encode(),method=method,headers={'Authorization':'Bearer '+key,'Content-Type':'application/json','Origin':'https://paulycee.com'})
                 with urllib.request.urlopen(req,timeout=10) as r:return json.load(r)
+            assert write('/transitions',{'from':'1001','to':'1002'},'POST')['pairs'][0]['from']=='1001'
+            assert len(write('/transitions',{'from':'1001','to':'1002'},'POST')['pairs'])==1
+            try:write('/transitions',{'from':'1001','to':'1001'},'POST');raise AssertionError('Accepted self-transition')
+            except urllib.error.HTTPError as e:assert e.code==400
             assert write('/favorites/1001',{'favorite':True})['ids']==['1001']
             assert write('/favorites/1001',{'favorite':True})['ids']==['1001']
             assert write('/favorites/import',{'ids':['1001','1002','9999']},'POST')['ids']==['1001','1002']
@@ -67,6 +74,7 @@ def main():
                     break
                 except OSError:time.sleep(.05)
             else:raise AssertionError('Server did not restart')
+            with get('/transitions') as r:assert json.load(r)['pairs'][0]['to']=='1002'
             print('PASS: nested playlist order, no source paths, auth, CORS, byte ranges, suffix ranges, invalid ranges and path allowlist.')
             print('PASS: global favorite add/remove, idempotent saves, merge import, unknown-track rejection and persistence after server restart.')
         finally:process.terminate();process.wait(timeout=10)

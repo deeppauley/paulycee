@@ -4,6 +4,7 @@ from contextlib import contextmanager,closing
 from http.server import ThreadingHTTPServer,BaseHTTPRequestHandler
 from beat_analysis import prepare as prepare_mix
 from preview_analysis import preview as prepare_preview
+from energy_analysis import energy as estimate_energy
 
 def library(xml):
     root=ET.parse(xml).getroot();tracks=[];paths={}
@@ -13,7 +14,8 @@ def library(xml):
         grids=[{'time':float(g.get('Inizio','0')),'bpm':float(g.get('Bpm','0')),'beat':int(g.get('Battito','1'))} for g in t.findall('TEMPO')]
         intro=next((g['time']+((1-g['beat'])%4)*60/g['bpm'] for g in grids if g['bpm']>0),0)
         cues=[{'time':float(c.get('Start','0')),'name':c.get('Name','')} for c in t.findall('POSITION_MARK')]
-        tracks.append({'id':id,'name':t.get('Name') or path.stem,'artist':t.get('Artist',''),'bpm':float(t.get('AverageBpm') or 0),'key':t.get('Tonality',''),'duration':float(t.get('TotalTime') or 0),'intro':intro,'grids':grids,'cues':cues,'available':path.is_file()})
+        audio_id=hashlib.sha256(os.path.normpath(str(path.absolute())).casefold().encode()).hexdigest()[:24]
+        tracks.append({'id':id,'audioId':audio_id,'name':t.get('Name') or path.stem,'artist':t.get('Artist',''),'bpm':float(t.get('AverageBpm') or 0),'key':t.get('Tonality',''),'duration':float(t.get('TotalTime') or 0),'intro':intro,'grids':grids,'cues':cues,'available':path.is_file()})
     playlists=[]
     def walk(node,parents=[]):
         name=node.get('Name','');chain=parents+([name] if name!='ROOT' else [])
@@ -37,8 +39,11 @@ def main():
     with favorites_connection() as db:
         db.execute('PRAGMA journal_mode=WAL')
         db.execute('CREATE TABLE IF NOT EXISTS favorites (track_id TEXT PRIMARY KEY)')
+        db.execute('CREATE TABLE IF NOT EXISTS transitions (from_id TEXT NOT NULL,to_id TEXT NOT NULL,created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,PRIMARY KEY(from_id,to_id))')
     def favorite_ids():
         with favorites_connection() as db:return [r[0] for r in db.execute('SELECT track_id FROM favorites ORDER BY track_id')]
+    def transitions():
+        with favorites_connection() as db:return {'pairs':[{'from':r[0],'to':r[1],'createdAt':r[2]} for r in db.execute('SELECT from_id,to_id,created_at FROM transitions ORDER BY created_at,from_id,to_id')]}
     origins={'https://paulycee.com','https://www.paulycee.com','http://127.0.0.1:4187','http://localhost:4187'}
     class Handler(BaseHTTPRequestHandler):
         def log_message(self,*args):pass # Never log access headers or audio requests.
@@ -62,12 +67,20 @@ def main():
             if not self.authorized():return
             route=urllib.parse.urlsplit(self.path).path
             match=re.fullmatch(r'/favorites/(\d+)',route)
-            if not ((self.command=='PUT' and match) or (self.command=='POST' and route=='/favorites/import')):self.send_error(404);return
+            is_transition=self.command=='POST' and route=='/transitions'
+            if not ((self.command=='PUT' and match) or (self.command=='POST' and route=='/favorites/import') or is_transition):self.send_error(404);return
             try:
                 length=int(self.headers.get('Content-Length','0'))
                 if length<=0 or length>262144 or not self.headers.get('Content-Type','').startswith('application/json'):self.send_error(400);return
                 body=json.loads(self.rfile.read(length))
                 if not isinstance(body,dict):raise ValueError()
+                if is_transition:
+                    first,second=body.get('from'),body.get('to')
+                    if not isinstance(first,str) or not isinstance(second,str) or first==second:raise ValueError()
+                    if first not in paths or second not in paths:self.send_error(404);return
+                    if paths[first].resolve()==paths[second].resolve():raise ValueError()
+                    with favorites_connection() as db:db.execute('INSERT OR IGNORE INTO transitions(from_id,to_id) VALUES (?,?)',(first,second))
+                    self.json_response(transitions());return
                 if match:
                     selected=body.get('favorite')
                     if type(selected) is not bool:raise ValueError()
@@ -87,6 +100,10 @@ def main():
         def handle_request(self,head):
             if not self.authorized():return
             route=urllib.parse.urlsplit(self.path).path
+            if route=='/transitions':
+                try:self.json_response(transitions(),head)
+                except sqlite3.Error:self.send_error(503,'Cannot read saved transitions')
+                return
             if route=='/favorites':
                 try:self.json_response({'ids':favorite_ids()},head)
                 except sqlite3.Error:self.send_error(503,'Cannot read favorites on the PC')
@@ -99,6 +116,15 @@ def main():
                     self.send_response(200);self.send_header('Content-Type','application/json');self.send_header('Content-Length',str(len(data)));self.end_headers()
                     if not head:self.wfile.write(data)
                 except Exception:self.send_error(503,'Cannot read Rekordbox XML')
+                return
+            energy_match=re.fullmatch(r'/energy/(\d+)',route)
+            if energy_match:
+                selected=energy_match[1]
+                if selected not in paths or not paths[selected].is_file():self.send_error(404);return
+                try:
+                    track=next(t for t in catalog['tracks'] if t['id']==selected)
+                    self.json_response(estimate_energy(paths[selected],track,state/'energy-cache'),head)
+                except Exception:self.send_error(503,'Energy estimate failed')
                 return
             preview_match=re.fullmatch(r'/preview/(\d+)',route)
             if preview_match:
