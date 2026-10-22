@@ -32,6 +32,9 @@ def main():
                 except OSError:time.sleep(.05)
             assert len(catalog['tracks'])==2;assert all(t['available'] for t in catalog['tracks']);assert catalog['playlists'][0]['tracks']==['1002','1001'];assert catalog['playlists'][0]['name']=='Folder / Test playlist'
             assert 'Location' not in json.dumps(catalog) and str(root) not in json.dumps(catalog)
+            with get('/preview/1001') as response:preview=json.load(response)
+            assert 0<=preview['position']<preview['duration'] and preview['originalSpeed']
+            assert str(root) not in json.dumps(preview)
             with get('/prepare/1001?tempo=125') as response:prepared=json.load(response)
             assert prepared['prepared'] and prepared['bpm']==125 and prepared['mixBeats']==8
             assert str(root) not in json.dumps(prepared)

@@ -3,6 +3,7 @@ import argparse,hashlib,hmac,json,mimetypes,os,pathlib,re,secrets,sqlite3,subpro
 from contextlib import contextmanager,closing
 from http.server import ThreadingHTTPServer,BaseHTTPRequestHandler
 from beat_analysis import prepare as prepare_mix
+from preview_analysis import preview as prepare_preview
 
 def library(xml):
     root=ET.parse(xml).getroot();tracks=[];paths={}
@@ -11,7 +12,8 @@ def library(xml):
         path=pathlib.Path(location);id=t.get('TrackID');paths[id]=path
         grids=[{'time':float(g.get('Inizio','0')),'bpm':float(g.get('Bpm','0')),'beat':int(g.get('Battito','1'))} for g in t.findall('TEMPO')]
         intro=next((g['time']+((1-g['beat'])%4)*60/g['bpm'] for g in grids if g['bpm']>0),0)
-        tracks.append({'id':id,'name':t.get('Name') or path.stem,'artist':t.get('Artist',''),'bpm':float(t.get('AverageBpm') or 0),'key':t.get('Tonality',''),'duration':float(t.get('TotalTime') or 0),'intro':intro,'grids':grids,'available':path.is_file()})
+        cues=[{'time':float(c.get('Start','0')),'name':c.get('Name','')} for c in t.findall('POSITION_MARK')]
+        tracks.append({'id':id,'name':t.get('Name') or path.stem,'artist':t.get('Artist',''),'bpm':float(t.get('AverageBpm') or 0),'key':t.get('Tonality',''),'duration':float(t.get('TotalTime') or 0),'intro':intro,'grids':grids,'cues':cues,'available':path.is_file()})
     playlists=[]
     def walk(node,parents=[]):
         name=node.get('Name','');chain=parents+([name] if name!='ROOT' else [])
@@ -97,6 +99,15 @@ def main():
                     self.send_response(200);self.send_header('Content-Type','application/json');self.send_header('Content-Length',str(len(data)));self.end_headers()
                     if not head:self.wfile.write(data)
                 except Exception:self.send_error(503,'Cannot read Rekordbox XML')
+                return
+            preview_match=re.fullmatch(r'/preview/(\d+)',route)
+            if preview_match:
+                selected=preview_match[1]
+                if selected not in paths or not paths[selected].is_file():self.send_error(404);return
+                try:
+                    track=next(t for t in catalog['tracks'] if t['id']==selected)
+                    self.json_response(prepare_preview(paths[selected],track,state/'preview-cache'),head)
+                except Exception:self.send_error(503,'Preview analysis failed')
                 return
             prepared=re.fullmatch(r'/prepare/(\d+)',route)
             audio_match=re.fullmatch(r'/audio/(\d+)',route)

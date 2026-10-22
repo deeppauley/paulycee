@@ -30,6 +30,14 @@ The PC analyzes low-frequency onset timing independently in the first and last 6
 
 The browser always plays prepared audio at rate 1, follows the audible outgoing media transport and no longer chases drift or variable XML tempo markers with continuous speed changes. Manual nudges have been removed. First playback at a new mix tempo takes extra preparation time. The next track prepares ahead of its transition; cache hits bypass the render lock so existing streams are not blocked. Analysis and rendered audio live in `mix-cache` under the external state directory, keyed by source path/mtime/size, algorithm version and requested tempo. No music is uploaded to Git. Global favorites remain unchanged on the PC server. Requires NumPy plus FFmpeg/ffprobe on the PC; tests cover shifted synthetic kicks, pitch preservation, cache reuse and browser rate stability. An actual iPhone listening test is still required for device-specific validation.
 
+## Fast Preview (default)
+
+The playback-mode selector defaults to Fast Preview. It uses one native HTML audio element at rate 1, with no Web Audio routing, mix fades, tempo query, `/prepare` request or time stretching. MP3/M4A/AAC sources stream directly; other formats use the existing format-only AAC conversion. Automix remains available as an explicit option.
+
+`/preview/<id>` chooses the earliest named chorus/hook/drop cue from the exported XML. Without a named cue it estimates a repeated energetic section in the first 180 seconds, and falls back to an approximate preview point when uncertain. UI copy labels the jump as an estimate rather than claiming semantic chorus recognition. Analysis is cached outside Git, keyed by source fingerprint, cues and algorithm version.
+
+New tracks, Next/Previous, row Play and First chorus jump to that track's preview point. Scrubbing uses the entire original file, including time zero, and never automatically jumps the user back to the chorus. Tracks continue to their end before the next preview starts, without overlap. Pause/resume preserves the scrub position. Media Session seeking and next/previous use the same controls. Tests cover original-source requests (no tempo processing), one active deck, fixed playback rate, full-song scrubbing, named cues, estimated hooks, queue completion and mobile width. On-device iPhone listening remains a separate validation step.
+
 ## Stop and restart
 
 To restart **only** the audio backend without changing the tunnel address, run `stream/Restart Audio Backend.ps1` locally. It verifies the recorded server identity before stopping it, starts the updated backend hidden, and leaves the tunnel process running.
