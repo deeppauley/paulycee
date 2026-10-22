@@ -10,12 +10,12 @@ const pendingFavorites=new Set();
 const requests=new Set();
 let heard=new Set(),favoriteAudio=new Set(),byTrack=new Map(),lastAudible=null,pairPrevious=null,lastPair=null,savedPairs=[],recommendVersion=0,savingPair=false,pairAudition=false;
 const controls=document.createElement('section');controls.className='panel discovery-controls';
-controls.innerHTML='<label>Queue order<select id="queue-order"><option value="regular">Playlist order</option><option value="shuffle">Shuffle</option><option value="harmonic">Mixed in Key–style · harmonic picks</option></select></label><label class="check"><input id="skip-favorites" type="checkbox"> Skip global Favorites</label><p id="sample-count" class="note"></p><button id="reset-samples">Reset session history</button><p id="recommendation-note" class="note">No repeats in this browser tab, including after a refresh. Scrubbing and resuming the current track remain available.</p><button id="save-transition" disabled>Good transition · save both songs</button><p id="transition-context" class="note">Play two tracks to save a pairing.</p>';
+controls.innerHTML='<label>Queue order<select id="queue-order"><option value="regular">Playlist order</option><option value="shuffle">Shuffle</option><option value="harmonic">Mixed in Key–style · harmonic picks</option></select></label><label class="check"><input id="skip-favorites" type="checkbox"> Skip global Favorites</label><p id="sample-count" class="note"></p><button id="reset-samples">Reset session history</button><p id="recommendation-note" class="note"></p><button id="save-transition" disabled>Good transition</button><p id="transition-context" class="note"></p>';
 document.querySelector('.toolbar').after(controls);
-const pairPanel=document.createElement('section');pairPanel.className='panel';pairPanel.innerHTML='<h2>Good transitions</h2><p class="note">Saved on your PC as ordered pairs. Session repeat prevention still applies; reset session history to audition pairs you already sampled.</p><ol id="transition-pairs"></ol>';
+const pairPanel=document.createElement('section');pairPanel.className='panel';pairPanel.innerHTML='<h2>Good transitions</h2><ol id="transition-pairs"></ol>';
 document.querySelector('.queue').before(pairPanel);
 document.querySelector('.transport').after($('#save-transition'),$('#transition-context'));
-function saveHeard(){try{sessionStorage.setItem('pauly-stream-heard:v1',JSON.stringify([...heard]));}catch{}$('#sample-count').textContent=heard.size+' tracks sampled this browser session';}
+function saveHeard(){try{sessionStorage.setItem('pauly-stream-heard:v1',JSON.stringify([...heard]));}catch{}$('#sample-count').textContent=heard.size+' sampled';}
 function favoriteKeys(){favoriteAudio=new Set(catalog.tracks.filter(t=>favorites.has(t.id)).map(audioKey));}
 function canPlay(track){return !heard.has(audioKey(track))&&(!$('#skip-favorites').checked||!favoriteAudio.has(audioKey(track)));}
 function recordHeard(track){
@@ -30,13 +30,13 @@ function ordered(tracks,reference=lastAudible){const order=$('#queue-order').val
 async function energyFor(track){if(!track||Number.isFinite(track.energy))return;try{const data=await request('/energy/'+encodeURIComponent(track.id));if(Number.isFinite(data.energy))track.energy=data.energy;}catch{}}
 async function recommendNext(reference){
   const token=++recommendVersion,engine=mixer;const pool=remaining().filter(t=>t.id!==reference.id),shortlist=candidates(reference,pool,8).map(r=>r.track);
-  $('#recommendation-note').textContent='Checking likely next tracks for harmonic, BPM and energy compatibility…';
+  $('#recommendation-note').textContent='Finding next match…';
   await energyFor(reference);
   for(let i=0;i<shortlist.length;i+=2){if(token!==recommendVersion||engine!==mixer)return;await Promise.all(shortlist.slice(i,i+2).map(energyFor));}
   if(token!==recommendVersion||engine!==mixer||lastAudible?.id!==reference.id)return;
   const next=candidates(reference,remaining().filter(t=>t.id!==reference.id),catalog.tracks.length);
   engine.replaceUpcoming(next.map(r=>r.track));renderRows();
-  const best=next[0];$('#recommendation-note').textContent=best?`${best.key} · ${best.delta===null?'BPM unknown':'BPM difference '+best.delta.toFixed(1)} · ${best.energyKnown?'audio-energy proxy compared':'energy unavailable'}. Heuristic suggestions, not the proprietary Mixed in Key algorithm.`:'No unheard eligible next tracks remain.';
+  const best=next[0];$('#recommendation-note').textContent=best?`${best.key} · ${best.delta===null?'BPM unknown':'BPM difference '+best.delta.toFixed(1)} · ${best.energyKnown?'estimated energy matched':'energy unknown'}`:'No eligible next tracks.';
 }
 function reorderUpcoming(){recommendVersion++;pairAudition=false;try{sessionStorage.setItem('pauly-stream-discovery:'+server,JSON.stringify({order:$('#queue-order').value,skip:$('#skip-favorites').checked}));}catch{}if(lastAudible&&mixer.plan[mixer.index()]?.track.id===lastAudible.id){mixer.replaceUpcoming(ordered(remaining()));renderRows();if($('#queue-order').value==='harmonic')recommendNext(lastAudible);status('Upcoming queue updated; the current track keeps playing.');}else applyPlaylist();}
 $('#queue-order').onchange=reorderUpcoming;$('#skip-favorites').onchange=reorderUpcoming;
@@ -105,7 +105,7 @@ function renderRows(){
     const play=document.createElement('button');play.textContent='▶';play.setAttribute('aria-label','Play '+t.name);play.disabled=!t.available||(!canPlay(t)&&t.id!==lastAudible?.id);play.onclick=()=>{const index=mixer.plan.findIndex(p=>p.track.id===t.id);if(index>=0)selectTrack(index,true)?.catch(e=>status(e.message));};
     row.append(number,copy,star,play);rows.append(row);
   }
-  if(!visible.length){const empty=document.createElement('li');empty.className='note';empty.textContent=favoriteOnly?'Tap a heart next to a song to build your favorites list.':'No tracks match your search.';rows.append(empty);}
+  if(!visible.length){const empty=document.createElement('li');empty.className='note';empty.textContent=favoriteOnly?'No Favorites.':'No matching tracks.';rows.append(empty);}
   renderPairs();
 }
 function update(){
@@ -114,11 +114,10 @@ function update(){
   for(const id of ['#jump','#previous','#next','#seek','#favorite-current'])$(id).disabled=mixer.loading||!item;
   $('#tempo').disabled=mixer.loading||mixer===preview;
   $('#save-transition').disabled=savingPair||!lastPair;
-  $('#transition-context').textContent=lastPair?(byTrack.get(lastPair.from)?.name||lastPair.from)+' → '+(byTrack.get(lastPair.to)?.name||lastPair.to)+(mixer===preview?' · preview pairing (not a beatmatched mix)':' · last track handoff'):'Play two tracks in this queue to save a pairing.';
+  $('#transition-context').textContent=lastPair?(byTrack.get(lastPair.from)?.name||lastPair.from)+' → '+(byTrack.get(lastPair.to)?.name||lastPair.to)+(mixer===preview?' · preview pair':''):'';
   $('#jump').textContent=mixer===preview?'First chorus':'Jump to mix';
   $('#blend').hidden=mixer===preview;
-  document.querySelector('.player>.note').textContent=mixer===preview?'Fast preview plays one original-speed track at a time—no time stretching, beat matching or crossfades. New tracks jump to a named chorus/hook cue when available, otherwise an estimated first chorus. The estimate may not be exact. Scrub anywhere, including back to the intro. Next starts the next track at its preview point.':'Automix prepares pitch-preserving audio at the selected tempo and overlaps tracks. First play may take longer while audio is prepared. Use Fast preview for completely unprocessed tempo and pitch.';
-  if(!item){$('#now-title').textContent='Choose a track';$('#now-artist').textContent='Start a playlist to hear your next mix.';$('#next-title').textContent='—';$('#metrics').textContent='32-BEAT AUTOMIX';$('#elapsed').textContent='0:00';$('#duration').textContent='0:00';$('#blend').value=0;$('#mix-state').textContent='';return;}
+  if(!item){$('#now-title').textContent='No track selected';$('#now-artist').textContent='';$('#next-title').textContent='—';$('#metrics').textContent='';$('#elapsed').textContent='0:00';$('#duration').textContent='0:00';$('#blend').value=0;$('#mix-state').textContent='';return;}
   $('#now-title').textContent=item.track.name;$('#now-artist').textContent=item.track.artist||'Unknown artist';$('#next-title').textContent=next?.track.name||'End of playlist';
   $('#metrics').textContent=mixer===preview?`FAST PREVIEW · ORIGINAL SPEED · ${item.track.bpm||'?'} BPM · ${preview.cues.get(item.track.id)?.method||'CHORUS PREVIEW'}`:`${mixer.tempo} BPM MIX · ${item.track.key||'KEY UNKNOWN'} · ${item.synced?'BEAT SYNC':'NATURAL SPEED'}`;
   const source=Math.min(item.track.duration,item.source(Math.max(0,time-item.start)));$('#elapsed').textContent=fmt(source);$('#duration').textContent=fmt(item.outro);
