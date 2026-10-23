@@ -1,4 +1,4 @@
-import {StreamMixer,gainAt} from './mixer.js?v=20261023-bars';
+import {StreamMixer,gainAt} from './mixer.js?v=20261023-bars2';
 import {PreviewPlayer} from './preview.js?v=20261022-discovery';
 import {favoriteOrder} from './order.js';
 import {audioKey,eligible,shuffled,candidates,mixScore,uniqueTracks} from './discovery.js?v=20261022';

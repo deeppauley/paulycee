@@ -116,11 +116,11 @@ export class StreamMixer{
       await new Promise(resolve=>setTimeout(resolve,80));
     }
   }
-  async startDeck(item,token){
+  async startDeck(item,token,resume=false){
     const deck=this.prepare(item);if(deck.starting)return;deck.starting=true;
     try{
       await deck.ready;if(token!==this.epoch||deck.item!==item)return;
-      if(!deck.started&&this.resumeId!==item.track.id&&!this.canPlay(item.track))throw Error('Skipped a sampled track or excluded Favorite.');
+      if(!resume&&!deck.started&&this.resumeId!==item.track.id&&!this.canPlay(item.track))throw Error('Skipped a sampled track or excluded Favorite.');
       const position=Math.min(deck.audio.duration-.01,Math.max(0,item.source(Math.max(0,this.time()-item.start))));
       deck.audio.currentTime=position;deck.audio.playbackRate=this.rate(item,position);
       await this.buffered(deck,token);if(token!==this.epoch)return;
@@ -146,6 +146,9 @@ export class StreamMixer{
       try{if(navigator.audioSession)navigator.audioSession.type='playback';}catch{}
       await this.context().resume();if(this.offset>=this.plan.at(-1).end)this.offset=0;
       let active=this.plan.filter(p=>p.start<=this.offset+.001&&p.end>this.offset);
+      // A duration rebuild can replace item identities and reset deck.started.
+      // Preserve permission only for decks already heard in this resumed overlap.
+      const resuming=new Set(active.filter(p=>{const d=this.decks[p.index%2];return d?.item===p&&d.started;}).map(p=>p.track.id));
       const selected=this.index(),selectedLocal=this.offset-this.plan[selected].start;
       await Promise.all(active.map(p=>this.prepare(p).ready));if(token!==this.epoch)return;
       this.offset=this.plan[selected].start+selectedLocal;
@@ -154,7 +157,7 @@ export class StreamMixer{
       for(const p of active){const actual=this.decks[p.index%2].audio.duration;if(Number.isFinite(actual)&&Math.abs(actual-p.track.duration)>.05){p.track.duration=actual;changed=true;}}
       if(changed){this.plan=makeStreamPlan(this.tracks,this.tempo,this.mixBeats);this.offset=this.plan[index].start+local;active=this.plan.filter(p=>p.start<=this.offset+.001&&p.end>this.offset);for(const p of active)this.decks[p.index%2].item=p;}
       this.anchor=this.ctx.currentTime;this.playing=true;
-      await Promise.all(active.map(p=>this.startDeck(p,token)));if(token!==this.epoch)return;
+      await Promise.all(active.map(p=>this.startDeck(p,token,resuming.has(p.track.id))));if(token!==this.epoch)return;
       const reference=this.decks[active[0].index%2];this.anchor=this.offset+this.ctx.currentTime-reference.item.start-reference.item.local(reference.audio.currentTime);
       for(const p of active)this.envelope(this.decks[p.index%2],this.time());
       this.timer=setInterval(()=>this.tick(),100);this.preloadNext();

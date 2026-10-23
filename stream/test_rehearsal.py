@@ -19,7 +19,12 @@ with tempfile.TemporaryDirectory() as temp:
             browser=p.chromium.launch(channel='msedge',headless=True)
             try:
                 page=browser.new_page(viewport={'width':390,'height':844});errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
+                page.add_init_script('''window.audios=[];const N=window.Audio;window.Audio=function(...args){const a=new N(...args);audios.push(a);return a;};window.Audio.prototype=N.prototype;''')
                 page.route('**/stream/connection.json',lambda r:r.fulfill(json={'server':'http://127.0.0.1:4196'}))
+                def duration_drift(route):
+                    response=route.fetch();data=response.json();data['duration']-=.25
+                    route.fulfill(response=response,json=data)
+                page.route('**/prepare/*',duration_drift)
                 page.goto('http://127.0.0.1:4187/stream/?playlist=import-asian-beer-fest');page.wait_for_selector('#room',state='visible')
                 assert page.locator('#playlist').input_value()=='import-asian-beer-fest'
                 assert page.locator('#playback-mode').input_value()=='mix'
@@ -31,10 +36,13 @@ with tempfile.TemporaryDirectory() as temp:
                 page.locator('#play').click()
                 page.wait_for_function('(el)=>el.textContent.includes(String.fromCharCode(80,97,117,115,101))',arg=page.locator('#play').element_handle(),timeout=60000)
                 assert page.locator('#now-title').inner_text()=='Tone 2'
+                page.wait_for_timeout(1500);page.locator('#jump').click()
+                page.wait_for_function('audios.filter(a=>!a.paused).length===2',timeout=60000)
+                assert page.evaluate('audios.every(a=>a.playbackRate===1)')
                 assert page.evaluate('document.documentElement.scrollWidth<=innerWidth')
                 assert not errors,errors
                 page.locator('#disconnect').click()
-                print('PASS exact imported order, direct rehearsal URL, automatic Automix/tempo, 4/8 bar selector, playback and mobile fit')
+                print('PASS exact imported order, direct rehearsal URL, automatic Automix/tempo, 4/8 bars, duration-rebuild handoff with two rate-1 decks, mobile fit')
             finally:browser.close()
     finally:
         # Let speculative next-track FFmpeg work finish before Windows removes files.
