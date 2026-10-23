@@ -6,7 +6,7 @@ from beat_analysis import prepare as prepare_mix
 from preview_analysis import preview as prepare_preview
 from energy_analysis import energy as estimate_energy
 
-def library(xml):
+def library(xml,playlist_dir=None):
     root=ET.parse(xml).getroot();tracks=[];paths={}
     for t in root.find('COLLECTION').findall('TRACK'):
         location=urllib.parse.unquote(t.get('Location','')).removeprefix('file://localhost/')
@@ -22,6 +22,10 @@ def library(xml):
         if node.get('Type')=='1':playlists.append({'id':str(len(playlists)),'name':' / '.join(chain),'tracks':[t.get('Key') for t in node.findall('TRACK') if t.get('Key') in paths]})
         for child in node.findall('NODE'):walk(child,chain)
     for node in root.findall('PLAYLISTS/NODE'):walk(node)
+    if playlist_dir:
+        for file in sorted(pathlib.Path(playlist_dir).glob('*.json')):
+            imported=json.loads(file.read_text(encoding='utf-8-sig'))
+            playlists.append({'id':'import-'+file.stem,'name':imported['name'],'tracks':[str(id) for id in imported['tracks'] if str(id) in paths],'rehearsal':True})
     return {'name':pathlib.Path(xml).stem,'tracks':tracks,'playlists':playlists},paths
 
 def main():
@@ -30,7 +34,7 @@ def main():
     state=pathlib.Path(a.state);state.mkdir(parents=True,exist_ok=True);cache=state/'audio-cache';cache.mkdir(exist_ok=True)
     keyfile=state/'access-key.txt'
     if not a.public and not keyfile.exists():keyfile.write_text(secrets.token_urlsafe(32))
-    key=keyfile.read_text().strip() if not a.public else '';catalog,paths=library(current_xml());lock=threading.Lock();semaphore=threading.BoundedSemaphore(2)
+    key=keyfile.read_text().strip() if not a.public else '';catalog,paths=library(current_xml(),state/'playlists');lock=threading.Lock();semaphore=threading.BoundedSemaphore(2)
     favorites_db=state/'favorites.sqlite3'
     @contextmanager
     def favorites_connection():
@@ -117,7 +121,7 @@ def main():
                 try:
                     with lock:
                         nonlocal catalog,paths
-                        catalog,paths=library(current_xml());data=json.dumps(catalog).encode()
+                        catalog,paths=library(current_xml(),state/'playlists');data=json.dumps(catalog).encode()
                     self.send_response(200);self.send_header('Content-Type','application/json');self.send_header('Content-Length',str(len(data)));self.end_headers()
                     if not head:self.wfile.write(data)
                 except Exception:self.send_error(503,'Cannot read Rekordbox XML')

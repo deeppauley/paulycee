@@ -1,4 +1,4 @@
-import {StreamMixer,gainAt} from './mixer.js?v=20261022-discovery';
+import {StreamMixer,gainAt} from './mixer.js?v=20261023-bars';
 import {PreviewPlayer} from './preview.js?v=20261022-discovery';
 import {favoriteOrder} from './order.js';
 import {audioKey,eligible,shuffled,candidates,mixScore,uniqueTracks} from './discovery.js?v=20261022';
@@ -71,6 +71,10 @@ async function request(path,kind='json',options={}){
   finally{clearTimeout(timer);requests.delete(controller);}
 }
 const automixer=new StreamMixer({url:track=>server+'/audio/'+encodeURIComponent(track.id)+'?tempo='+automixer.tempo,prepareTrack:(track,tempo)=>request('/prepare/'+encodeURIComponent(track.id)+'?tempo='+tempo),onstarted:recordHeard,canPlay,onchange:()=>update(),onerror:e=>status(e.message)});
+const blendLabel=document.createElement('label');blendLabel.textContent='Transition length';
+const bars=document.createElement('select');bars.id='mix-bars';bars.add(new Option('8 bars · 32 beats','32'));bars.add(new Option('4 bars · 16 beats','16'));blendLabel.append(bars);document.querySelector('.settings').append(blendLabel);
+automixer.mixBeats=32;
+bars.onchange=()=>{automixer.mixBeats=Number(bars.value);if(mixer===automixer){const index=mixer.index(),playing=mixer.playing,current=mixer.plan[index]?.track.id,tracks=mixer.tracks.slice(index);mixer.setQueue(tracks,mixer.tempo);if(current===lastAudible?.id)mixer.resumeId=current;renderRows();if(playing)mixer.play().catch(e=>status(e.message));status('Transition length changed; current track restarted.');}};
 const preview=new PreviewPlayer({url:track=>server+'/audio/'+encodeURIComponent(track.id),cue:track=>request('/preview/'+encodeURIComponent(track.id)),onstarted:recordHeard,canPlay,onchange:()=>update(),onerror:e=>status(e.message)});
 let mixer=preview;
 function selectTrack(index,autoplay=true){const item=mixer.plan[index];if(!item)return;if(!canPlay(item.track)){if(item.track.id===lastAudible?.id&&index===mixer.index())return mixer.play();status('Already sampled this session or excluded as a Favorite. Reset history to sample it again.');return;}if(mixer===preview)return preview.open(index,autoplay);return mixer.seek(item.start,autoplay);}
@@ -176,18 +180,21 @@ async function connect(){
     await favoriteWrites;await loadFavorites(true);
     await loadTransitions();
     for(const p of catalog.playlists)$('#playlist').add(new Option(p.name,p.id));
-    if([...$('#playlist').options].some(p=>p.value===previousPlaylist))$('#playlist').value=previousPlaylist;
+    const requestedPlaylist=new URLSearchParams(location.search).get('playlist');
+    if(requestedPlaylist&&catalog.playlists.some(p=>p.id===requestedPlaylist))$('#playlist').value=requestedPlaylist;
+    else if([...$('#playlist').options].some(p=>p.value===previousPlaylist))$('#playlist').value=previousPlaylist;
     syncFavoriteView();
     const first=catalog.tracks.find(t=>t.available&&t.bpm>=60&&t.bpm<=180);$('#tempo').value=first?.bpm||120;
     $('#connect').hidden=true;$('#room').hidden=false;$('#disconnect').hidden=false;
     try{sessionStorage.removeItem('pauly-stream-connection');}catch{}
-    applyPlaylist();status(`${catalog.tracks.length} tracks · ${catalog.playlists.length} playlists · ${catalog.tracks.filter(t=>!t.available).length} unavailable on PC. Global favorites saved on the server.`);
+    rehearsalSettings();applyPlaylist();status(`${catalog.tracks.length} tracks · ${catalog.playlists.length} playlists · ${catalog.tracks.filter(t=>!t.available).length} unavailable on PC. Global favorites saved on the server.`);
   }catch(e){status(e.message);}finally{connecting=false;button.disabled=false;}
 }
 $('#connection').onsubmit=e=>{e.preventDefault();connect();};
 $('#disconnect').onclick=()=>{for(const r of requests)r.abort();mixer.clear();connected=false;catalog={tracks:[],playlists:[]};$('#room').hidden=true;$('#connect').hidden=false;$('#disconnect').hidden=true;if('mediaSession'in navigator){navigator.mediaSession.metadata=null;navigator.mediaSession.playbackState='none';}status('Disconnected. Global favorites are saved on the server.');};
 $('#refresh').onclick=async()=>{if(mixer.loading){status('Wait for the current track to finish loading before refreshing.');return;}mixer.pause();$('#server').value=server;await connect();};
-$('#playlist').onchange=()=>{syncFavoriteView();applyPlaylist();};
+function rehearsalSettings(){const selected=catalog.playlists.find(p=>p.id===$('#playlist').value);if(selected?.rehearsal){mixer.clear();mode.value='mix';mixer=automixer;$('#queue-order').value='regular';const first=byTrack.get(selected.tracks[0]);if(first?.bpm>=60&&first.bpm<=180)$('#tempo').value=Math.round(first.bpm*10)/10;}}
+$('#playlist').onchange=()=>{syncFavoriteView();rehearsalSettings();applyPlaylist();};
 $('#favorites').onclick=()=>showFavoriteView('normal');$('#halloween-favorites').onclick=()=>showFavoriteView('halloween');
 $('#search').oninput=e=>{rowLimit=200;query=e.target.value.trim().toLowerCase();renderRows();};
 $('#load-more').onclick=()=>{rowLimit+=200;renderRows();};

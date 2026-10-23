@@ -1,7 +1,7 @@
 import {grid,beatAt,sourceAt,gainAt} from '../practice/mix.js';
 
 // A shared tempo makes both grids run on the same clock throughout the overlap.
-export function makeStreamPlan(tracks,tempo){
+export function makeStreamPlan(tracks,tempo,mixBeats=null){
   const plan=[];
   for(const track of tracks){
     const gs=grid(track),synced=gs.length>0;
@@ -13,7 +13,7 @@ export function makeStreamPlan(tracks,tempo){
     const duration=synced?(beatAt(gs,outro)-base)*60/tempo:outro-intro;
     const previous=plan.at(-1);
     // Short clips cannot supply 32 beats: use as much as half of either clip.
-    const overlap=previous?Math.min(Math.min(track.mixBeats||32,previous.track.mixBeats||32)*60/tempo,duration/2,previous.duration/2):0;
+    const overlap=previous?Math.min((mixBeats??Math.min(track.mixBeats||32,previous.track.mixBeats||32))*60/tempo,duration/2,previous.duration/2):0;
     const start=previous?previous.end-overlap:0;
     const item={track,gs,synced,intro,outro,base,duration,start,end:start+duration,fadeIn:overlap,fadeOut:0,index:plan.length};
     item.source=local=>synced?sourceAt(gs,base+local*tempo/60):intro+local;
@@ -67,7 +67,7 @@ export class StreamMixer{
     return this.offset;
   }
   index(){return (this.plan.findLast(p=>p.start<=this.time()+.001)||this.plan[0])?.index||0;}
-  setQueue(tracks,tempo=this.tempo){this.pause();this.unload();this.resumeId=null;this.tempo=tempo;this.tracks=tracks.map(t=>{const original=t._original||t;return {...original,_original:original};});this.plan=makeStreamPlan(this.tracks,tempo);this.offset=0;this.failed.clear();this.onchange();}
+  setQueue(tracks,tempo=this.tempo){this.pause();this.unload();this.resumeId=null;this.tempo=tempo;this.tracks=tracks.map(t=>{const original=t._original||t;return {...original,_original:original};});this.plan=makeStreamPlan(this.tracks,tempo,this.mixBeats);this.offset=0;this.failed.clear();this.onchange();}
   prepare(item){
     this.context();const deck=this.decks[item.index%2];if(deck.item===item)return deck;
     deck.audio.pause();deck.item=item;deck.started=false;deck.error=null;deck.gain.gain.cancelScheduledValues(this.ctx.currentTime);deck.gain.gain.value=0;
@@ -78,7 +78,7 @@ export class StreamMixer{
         const data=await this.prepareTrack(item.track,this.tempo);
         if(this.plan!==queue||deck.item!==item)throw Error('Track changed.');
         Object.assign(item.track,data);
-        const rebuilt=makeStreamPlan(this.tracks,this.tempo);
+        const rebuilt=makeStreamPlan(this.tracks,this.tempo,this.mixBeats);
         for(let i=0;i<queue.length;i++)Object.assign(queue[i],rebuilt[i]);
         if(this.playing){const time=this.time();for(const d of this.decks)if(d.item&&!d.audio.paused)this.envelope(d,time);}
       }
@@ -152,7 +152,7 @@ export class StreamMixer{
       // Native media buffering avoids allocating two full decoded tracks in memory.
       const index=this.index(),local=this.offset-this.plan[index].start;let changed=false;
       for(const p of active){const actual=this.decks[p.index%2].audio.duration;if(Number.isFinite(actual)&&Math.abs(actual-p.track.duration)>.05){p.track.duration=actual;changed=true;}}
-      if(changed){this.plan=makeStreamPlan(this.tracks,this.tempo);this.offset=this.plan[index].start+local;active=this.plan.filter(p=>p.start<=this.offset+.001&&p.end>this.offset);for(const p of active)this.decks[p.index%2].item=p;}
+      if(changed){this.plan=makeStreamPlan(this.tracks,this.tempo,this.mixBeats);this.offset=this.plan[index].start+local;active=this.plan.filter(p=>p.start<=this.offset+.001&&p.end>this.offset);for(const p of active)this.decks[p.index%2].item=p;}
       this.anchor=this.ctx.currentTime;this.playing=true;
       await Promise.all(active.map(p=>this.startDeck(p,token)));if(token!==this.epoch)return;
       const reference=this.decks[active[0].index%2];this.anchor=this.offset+this.ctx.currentTime-reference.item.start-reference.item.local(reference.audio.currentTime);
@@ -184,7 +184,7 @@ export class StreamMixer{
   replaceUpcoming(tracks){
     const index=this.index();this.tracks=[...this.tracks.slice(0,index+1),...tracks.map(t=>{const original=t._original||t;return {...original,_original:original};})];
     for(const d of this.decks)if(d.item?.index>index){d.audio.pause();d.item=null;d.audio.removeAttribute('src');d.audio.load();}
-    const rebuilt=makeStreamPlan(this.tracks,this.tempo);for(let i=0;i<=index;i++){Object.assign(this.plan[i],rebuilt[i]);rebuilt[i]=this.plan[i];}this.plan=rebuilt;
+    const rebuilt=makeStreamPlan(this.tracks,this.tempo,this.mixBeats);for(let i=0;i<=index;i++){Object.assign(this.plan[i],rebuilt[i]);rebuilt[i]=this.plan[i];}this.plan=rebuilt;
     this.failed=new Set([...this.failed].filter(i=>i<=index));if(this.playing){for(const d of this.decks)if(d.item&&!d.audio.paused)this.envelope(d,this.time());this.preloadNext();}this.onchange();
   }
 }

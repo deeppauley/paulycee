@@ -30,6 +30,12 @@ The PC analyzes low-frequency onset timing independently in the first and last 6
 
 The browser always plays prepared audio at rate 1, follows the audible outgoing media transport and no longer chases drift or variable XML tempo markers with continuous speed changes. Manual nudges have been removed. First playback at a new mix tempo takes extra preparation time. The next track prepares ahead of its transition; cache hits bypass the render lock so existing streams are not blocked. Analysis and rendered audio live in `mix-cache` under the external state directory, keyed by source path/mtime/size, algorithm version and requested tempo. No music is uploaded to Git. Global favorites remain unchanged on the PC server. Requires NumPy plus FFmpeg/ffprobe on the PC; tests cover shifted synthetic kicks, pitch preservation, cache reuse and browser rate stability. An actual iPhone listening test is still required for device-specific validation.
 
+## Ordered rehearsal playlists
+
+`import_playlist.py` matches a UTF-8 M3U8 against the full Rekordbox export by source path, validates every file, and writes only track IDs to `playlists/<slug>.json` in the external PC state directory. The backend includes these lists on library refresh, in their original order. Neither source paths nor music are added to Git. `?playlist=import-asian-beer-fest` opens the Asian Beer Fest rehearsal directly, selecting Automix, playlist order, and the first track's BPM.
+
+Automix offers 8 bars (32 beats) or 4 bars (16 beats), in 4/4 time. The selected length overrides the older confidence-based 8-beat fallback, but very short tracks still cap the overlap at half of either track. Changes restart the current track and retain its upcoming queue. PC-side Rubber Band preserves pitch while rendering to one steady session tempo; the browser plays the render at rate 1. Beat/phrase alignment remains heuristic and is not Rekordbox's proprietary engine. Existing session-history and optional Favorite exclusions still apply; Reset session history permits a full repeat rehearsal. First-time preparation can take longer, then uses the PC cache. Reliable screen-lock automixing on iPhone is not guaranteed.
+
 ## Fast Preview (default)
 
 The playback-mode selector defaults to Fast Preview. It uses one native HTML audio element at rate 1, with no Web Audio routing, mix fades, tempo query, `/prepare` request or time stretching. MP3/M4A/AAC sources stream directly; other formats use the existing format-only AAC conversion. Automix remains available as an explicit option.
