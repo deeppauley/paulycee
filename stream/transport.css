@@ -3,13 +3,19 @@
 .transport #previous{grid-column:1;grid-row:2}
 .transport #play{grid-column:2;grid-row:2;min-height:112px;font-size:17px;padding:12px 6px}
 .transport #next{grid-column:3;grid-row:2}
-.transport #previous,.transport #next,.transport #favorite-current{min-height:112px;padding:12px 6px;border-radius:16px;border:2px solid #4389ff;background:#193763;color:#eef7ff;touch-action:manipulation}
+.transport #previous,.transport #next,.transport #favorite-current,.transport #halloween-current{min-height:112px;padding:12px 6px;border-radius:16px;border:2px solid #4389ff;background:#193763;color:#eef7ff;touch-action:manipulation}
 .transport .skip-icon{display:block;font-size:48px;line-height:1.1}
 .transport .skip-label{display:block;margin-top:8px;font-size:13px;font-weight:750;letter-spacing:.02em}
 .transport #previous:active,.transport #next:active{background:#2b5693;transform:scale(.97)}
-.transport #jump{grid-column:1/3;grid-row:1;min-height:48px;align-self:center}
-.transport #favorite-current{grid-column:3;grid-row:1;text-align:center;font-size:48px;line-height:1.1}
+.transport #jump{grid-column:1;grid-row:1;min-height:48px;align-self:center}
+.transport #favorite-current{grid-column:2;grid-row:1;text-align:center;font-size:48px;line-height:1.1}
+.transport #halloween-current{grid-column:3;grid-row:1;text-align:center;font-size:48px;line-height:1.1;padding:8px 6px;border-color:#c97b37}
+.transport #halloween-current::after{content:'Halloween\A Party';white-space:pre-line;display:block;margin-top:5px;font-size:11px;line-height:1.15;font-weight:750;color:#ffac69}
+.transport #halloween-current[aria-pressed=true]{color:#ff3b5c;border-color:#ff8c42;background:#35231d}
 .transport #favorite-current::after{content:'Like';display:block;margin-top:8px;font-size:13px;font-weight:750;letter-spacing:.02em}
 .transport #favorite-current[aria-pressed=true]{color:#ff3b5c;border-color:#ff3b5c;background:#351c2b}
 .transport #favorite-current[aria-pressed=true]::after{content:'Liked'}
 @media(max-width:650px){.transport{gap:8px}.transport #play{font-size:14px}.transport .skip-label{font-size:12px}}
+.favorite-views{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;min-width:220px}
+.favorite-views button{font-size:12px;padding:10px 8px}
+#halloween-favorites[aria-pressed=true]{color:#ffac69;border-color:#ff8c42}

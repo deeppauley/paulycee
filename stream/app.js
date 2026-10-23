@@ -5,18 +5,23 @@ import {audioKey,eligible,shuffled,candidates,mixScore,uniqueTracks} from './dis
 const $=s=>document.querySelector(s),status=t=>{$('#status').textContent=t;};
 const fmt=n=>{n=Math.max(0,Math.floor(n||0));return Math.floor(n/60)+':'+String(n%60).padStart(2,'0');};
 let server='',catalog={tracks:[],playlists:[]},visible=[],favoriteOnly=false,query='',connected=false,lastIndex=-1,lastMetadata='',connecting=false,rowLimit=200;
-let favorites=new Set(),favoriteWrites=Promise.resolve(),syncingFavorites=false;
+let favorites=new Set(),halloweenFavorites=new Set(),favoriteWrites=Promise.resolve(),syncingFavorites=false,favoriteRevision=0;
 const pendingFavorites=new Set();
+const pendingHalloween=new Set();
+const favoriteViews=document.createElement('div');favoriteViews.className='favorite-views';$('#favorites').before(favoriteViews);favoriteViews.append($('#favorites'));
+const halloweenView=document.createElement('button');halloweenView.id='halloween-favorites';halloweenView.setAttribute('aria-pressed','false');halloweenView.innerHTML='Halloween Party <span id="halloween-count">0</span>';favoriteViews.append(halloweenView);
+const halloweenHeart=document.createElement('button');halloweenHeart.id='halloween-current';halloweenHeart.setAttribute('aria-label','Add current track to Halloween Party Favorites');halloweenHeart.setAttribute('aria-pressed','false');halloweenHeart.textContent='♡';$('#favorite-current').after(halloweenHeart);
 const requests=new Set();
 let heard=new Set(),favoriteAudio=new Set(),byTrack=new Map(),lastAudible=null,pairPrevious=null,lastPair=null,savedPairs=[],recommendVersion=0,savingPair=false,pairAudition=false;
 const controls=document.createElement('section');controls.className='panel discovery-controls';
 controls.innerHTML='<label>Queue order<select id="queue-order"><option value="regular">Playlist order</option><option value="shuffle">Shuffle</option><option value="harmonic">Mixed in Key–style · harmonic picks</option></select></label><label class="check"><input id="skip-favorites" type="checkbox"> Skip global Favorites</label><p id="sample-count" class="note"></p><button id="reset-samples">Reset session history</button><p id="recommendation-note" class="note"></p><button id="save-transition" disabled>Good transition</button><p id="transition-context" class="note"></p>';
 document.querySelector('.toolbar').after(controls);
+$('#skip-favorites').parentElement.lastChild.textContent=' Skip Favorites (both lists)';
 const pairPanel=document.createElement('section');pairPanel.className='panel';pairPanel.innerHTML='<h2>Good transitions</h2><ol id="transition-pairs"></ol>';
 document.querySelector('.queue').before(pairPanel);
 document.querySelector('.transport').after($('#save-transition'),$('#transition-context'));
 function saveHeard(){try{sessionStorage.setItem('pauly-stream-heard:v1',JSON.stringify([...heard]));}catch{}$('#sample-count').textContent=heard.size+' sampled';}
-function favoriteKeys(){favoriteAudio=new Set(catalog.tracks.filter(t=>favorites.has(t.id)).map(audioKey));}
+function favoriteKeys(){favoriteAudio=new Set(catalog.tracks.filter(t=>favorites.has(t.id)||halloweenFavorites.has(t.id)).map(audioKey));}
 function canPlay(track){return !heard.has(audioKey(track))&&(!$('#skip-favorites').checked||!favoriteAudio.has(audioKey(track)));}
 function recordHeard(track){
   const original=byTrack.get(track.id)||track;
@@ -71,29 +76,41 @@ let mixer=preview;
 function selectTrack(index,autoplay=true){const item=mixer.plan[index];if(!item)return;if(!canPlay(item.track)){if(item.track.id===lastAudible?.id&&index===mixer.index())return mixer.play();status('Already sampled this session or excluded as a Favorite. Reset history to sample it again.');return;}if(mixer===preview)return preview.open(index,autoplay);return mixer.seek(item.start,autoplay);}
 mode.onchange=()=>{const old=mixer.plan[mixer.index()],id=old?.track.id,playing=mixer.playing,volume=mixer.volume,fraction=old?Math.max(0,(mixer.time()-old.start)/old.duration):0,current=byTrack.get(id);mixer.clear();mixer=mode.value==='preview'?preview:automixer;mixer.setVolume(volume);applyPlaylist();if(current&&lastAudible?.id===id&&playlistTracks().some(t=>t.id===id)){mixer.setQueue([current,...ordered(remaining())],Number($('#tempo').value));if(mixer===automixer)mixer.resumeId=id;mixer.seek(mixer.plan[0].start+Math.min(.999,fraction)*mixer.plan[0].duration,playing);}update();};
 async function loadFavorites(migrate=false){
-  if(syncingFavorites||pendingFavorites.size||!connected)return;syncingFavorites=true;
+  if(syncingFavorites||pendingFavorites.size||pendingHalloween.size||!connected)return;syncingFavorites=true;const revision=favoriteRevision;
   try{
     let legacy=[];if(migrate)try{const saved=JSON.parse(localStorage.getItem('pauly-stream-favorites')||'[]');if(Array.isArray(saved))legacy=saved.filter(id=>typeof id==='string');}catch{}
     const data=legacy.length?await request('/favorites/import','json',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ids:legacy})}):await request('/favorites');
     if(!Array.isArray(data.ids))throw Error('The server did not return a favorites list.');
-    const changed=[...favorites].sort().join(',')!==[...data.ids].sort().join(',');favorites=new Set(data.ids);favoriteKeys();if(migrate)try{localStorage.removeItem('pauly-stream-favorites');}catch{}
+    const party=await request('/favorites/halloween');if(!Array.isArray(party.ids))throw Error('The server did not return Halloween Favorites.');
+    if(revision!==favoriteRevision)return;
+    const changed=[...favorites].sort().join(',')!==[...data.ids].sort().join(',')||[...halloweenFavorites].sort().join(',')!==[...party.ids].sort().join(',');favorites=new Set(data.ids);halloweenFavorites=new Set(party.ids);favoriteKeys();if(migrate)try{localStorage.removeItem('pauly-stream-favorites');}catch{}
     if(!$('#room').hidden){if(changed&&$('#skip-favorites').checked)reorderUpcoming();else renderRows();update();}
   }finally{syncingFavorites=false;}
 }
 function toggleFavorite(id){
-  if(!id||pendingFavorites.has(id))return;const favorite=!favorites.has(id);pendingFavorites.add(id);renderRows();update();
+  if(!id||pendingFavorites.has(id))return;const favorite=!favorites.has(id);favoriteRevision++;pendingFavorites.add(id);renderRows();update();
   favoriteWrites=favoriteWrites.then(async()=>{
     try{const data=await request('/favorites/'+encodeURIComponent(id),'json',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({favorite})});favorites=new Set(data.ids);status(favorite?'Added to global favorites.':'Removed from global favorites.');}
     catch(e){status('Could not save global favorites: '+e.message);}
     finally{pendingFavorites.delete(id);favoriteKeys();if(connected){if($('#skip-favorites').checked)reorderUpcoming();else renderRows();update();}}
   });
 }
-function playlistTracks(){if(favoriteOnly)return favoriteOrder(catalog.tracks.filter(t=>favorites.has(t.id)),{sort:$('#favorite-sort').value,min:$('#bpm-min').value,max:$('#bpm-max').value,key:$('#key-filter').value});const chosen=$('#playlist').value;const ids=chosen==='transitions'?savedPairs.flatMap(p=>[p.from,p.to]):chosen==='all'?catalog.tracks.map(t=>t.id):catalog.playlists.find(p=>p.id===chosen)?.tracks||[];return uniqueTracks(ids.map(id=>byTrack.get(id)).filter(Boolean));}
+function toggleHalloween(id){
+  if(!id||pendingHalloween.has(id))return;const favorite=!halloweenFavorites.has(id);favoriteRevision++;pendingHalloween.add(id);update();
+  favoriteWrites=favoriteWrites.then(async()=>{
+    try{const data=await request('/favorites/halloween/'+encodeURIComponent(id),'json',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({favorite})});halloweenFavorites=new Set(data.ids);status(favorite?'Added to Halloween Party Favorites.':'Removed from Halloween Party Favorites.');}
+    catch(e){status('Could not save Halloween Favorites: '+e.message);}
+    finally{pendingHalloween.delete(id);favoriteKeys();if(connected){if($('#skip-favorites').checked)reorderUpcoming();else renderRows();update();}}
+  });
+}
+function syncFavoriteView(){favoriteOnly=$('#playlist').value==='favorites-normal'?'normal':$('#playlist').value==='favorites-halloween'?'halloween':false;filters.hidden=!favoriteOnly;$('#favorites').setAttribute('aria-pressed',String(favoriteOnly==='normal'));$('#halloween-favorites').setAttribute('aria-pressed',String(favoriteOnly==='halloween'));}
+function showFavoriteView(kind){$('#playlist').value=favoriteOnly===kind?'all':kind==='normal'?'favorites-normal':'favorites-halloween';syncFavoriteView();applyPlaylist();}
+function playlistTracks(){if(favoriteOnly){const list=favoriteOnly==='halloween'?halloweenFavorites:favorites;return favoriteOrder(catalog.tracks.filter(t=>list.has(t.id)),{sort:$('#favorite-sort').value,min:$('#bpm-min').value,max:$('#bpm-max').value,key:$('#key-filter').value});}const chosen=$('#playlist').value;const ids=chosen==='transitions'?savedPairs.flatMap(p=>[p.from,p.to]):chosen==='all'?catalog.tracks.map(t=>t.id):catalog.playlists.find(p=>p.id===chosen)?.tracks||[];return uniqueTracks(ids.map(id=>byTrack.get(id)).filter(Boolean));}
 function applyPlaylist(){recommendVersion++;pairAudition=false;pairPrevious=null;lastPair=null;rowLimit=200;mixer.setQueue(ordered(remaining()),Number($('#tempo').value));lastIndex=-1;renderRows();saveHeard();status(mixer.plan.length+' unheard eligible tracks queued. No repeats across playlists in this browser session.');}
 function renderRows(){
   const base=playlistTracks(),ids=new Set(base.map(t=>t.id)),queued=mixer.plan.map(p=>byTrack.get(p.track.id)||p.track).filter(t=>ids.has(t.id)),inQueue=new Set(queued.map(t=>t.id));visible=[...queued,...base.filter(t=>!inQueue.has(t.id))].filter(t=>!query||(t.name+' '+t.artist).toLowerCase().includes(query));const rows=$('#tracks');rows.replaceChildren();
-  $('#queue-title').textContent=favoriteOnly?'Global favorites':$('#playlist').selectedOptions[0]?.textContent||'Collection';
-  $('#count').textContent=visible.length+' tracks';$('#favorite-count').textContent=favorites.size;
+  $('#queue-title').textContent=favoriteOnly==='halloween'?'Halloween Party Favorites':favoriteOnly?'Global favorites':$('#playlist').selectedOptions[0]?.textContent||'Collection';
+  $('#count').textContent=visible.length+' tracks';$('#favorite-count').textContent=favorites.size;$('#halloween-count').textContent=halloweenFavorites.size;
   const current=mixer.plan[mixer.index()]?.track.id;
   $('#load-more').hidden=visible.length<=rowLimit;
   for(const [i,t]of visible.slice(0,rowLimit).entries()){
@@ -111,7 +128,9 @@ function renderRows(){
 function update(){
   const i=mixer.index(),item=mixer.plan[i],time=mixer.time(),next=mixer.plan[i+1];
   $('#play').textContent=mixer.loading?'Loading…':mixer.playing?'Ⅱ Pause':'▶ Play';$('#play').disabled=mixer.loading||!item;
-  for(const id of ['#jump','#previous','#next','#seek','#favorite-current'])$(id).disabled=mixer.loading||!item;
+  for(const id of ['#jump','#previous','#next','#seek','#favorite-current','#halloween-current'])$(id).disabled=mixer.loading||!item;
+  $('#halloween-current').textContent=item&&halloweenFavorites.has(item.track.id)?'♥':'♡';$('#halloween-current').setAttribute('aria-pressed',String(!!item&&halloweenFavorites.has(item.track.id)));$('#halloween-current').disabled=mixer.loading||!item||pendingHalloween.has(item?.track.id);
+  $('#halloween-current').setAttribute('aria-label',item&&halloweenFavorites.has(item.track.id)?'Remove current track from Halloween Party Favorites':'Add current track to Halloween Party Favorites');
   $('#tempo').disabled=mixer.loading||mixer===preview;
   $('#save-transition').disabled=savingPair||!lastPair;
   $('#transition-context').textContent=lastPair?(byTrack.get(lastPair.from)?.name||lastPair.from)+' → '+(byTrack.get(lastPair.to)?.name||lastPair.to)+(mixer===preview?' · preview pair':''):'';
@@ -141,13 +160,14 @@ async function connect(){
     const loopback=['127.0.0.1','localhost','[::1]'].includes(url.hostname);if(url.protocol!=='https:'&&!(url.protocol==='http:'&&loopback&&location.hostname==='127.0.0.1'))throw Error('Use an HTTPS server address for phone and live website access.');
     server=url.origin;status('Reading your Rekordbox library…');
     const data=await request('/library');if(!Array.isArray(data.tracks)||!Array.isArray(data.playlists))throw Error('The server did not return a Rekordbox library.');
-    const previousPlaylist=$('#playlist').value;catalog=data;byTrack=new Map(catalog.tracks.map(t=>[t.id,t]));connected=true;$('#library-source').textContent='REKORDBOX / '+(catalog.name||'LIVE LIBRARY');$('#playlist').replaceChildren(new Option('Full collection','all'),new Option('Good transitions · saved pairs','transitions'));
+    const previousPlaylist=$('#playlist').value;catalog=data;byTrack=new Map(catalog.tracks.map(t=>[t.id,t]));connected=true;$('#library-source').textContent='REKORDBOX / '+(catalog.name||'LIVE LIBRARY');$('#playlist').replaceChildren(new Option('Full collection','all'),new Option('Favorites','favorites-normal'),new Option('Halloween Party Favorites','favorites-halloween'),new Option('Good transitions · saved pairs','transitions'));
     try{const saved=JSON.parse(sessionStorage.getItem('pauly-stream-heard:v1')||'[]');heard=new Set(Array.isArray(saved)?saved.filter(id=>typeof id==='string'):[]);}catch{heard=new Set();}
     try{const prefs=JSON.parse(sessionStorage.getItem('pauly-stream-discovery:'+server)||'{}');if(['regular','shuffle','harmonic'].includes(prefs.order))$('#queue-order').value=prefs.order;$('#skip-favorites').checked=prefs.skip===true;}catch{}
     await favoriteWrites;await loadFavorites(true);
     await loadTransitions();
     for(const p of catalog.playlists)$('#playlist').add(new Option(p.name,p.id));
     if([...$('#playlist').options].some(p=>p.value===previousPlaylist))$('#playlist').value=previousPlaylist;
+    syncFavoriteView();
     const first=catalog.tracks.find(t=>t.available&&t.bpm>=60&&t.bpm<=180);$('#tempo').value=first?.bpm||120;
     $('#connect').hidden=true;$('#room').hidden=false;$('#disconnect').hidden=false;
     try{sessionStorage.removeItem('pauly-stream-connection');}catch{}
@@ -157,8 +177,8 @@ async function connect(){
 $('#connection').onsubmit=e=>{e.preventDefault();connect();};
 $('#disconnect').onclick=()=>{for(const r of requests)r.abort();mixer.clear();connected=false;catalog={tracks:[],playlists:[]};$('#room').hidden=true;$('#connect').hidden=false;$('#disconnect').hidden=true;if('mediaSession'in navigator){navigator.mediaSession.metadata=null;navigator.mediaSession.playbackState='none';}status('Disconnected. Global favorites are saved on the server.');};
 $('#refresh').onclick=async()=>{if(mixer.loading){status('Wait for the current track to finish loading before refreshing.');return;}mixer.pause();$('#server').value=server;await connect();};
-$('#playlist').onchange=applyPlaylist;
-$('#favorites').onclick=()=>{favoriteOnly=!favoriteOnly;filters.hidden=!favoriteOnly;$('#favorites').setAttribute('aria-pressed',String(favoriteOnly));applyPlaylist();};
+$('#playlist').onchange=()=>{syncFavoriteView();applyPlaylist();};
+$('#favorites').onclick=()=>showFavoriteView('normal');$('#halloween-favorites').onclick=()=>showFavoriteView('halloween');
 $('#search').oninput=e=>{rowLimit=200;query=e.target.value.trim().toLowerCase();renderRows();};
 $('#load-more').onclick=()=>{rowLimit+=200;renderRows();};
 $('#play').onclick=()=>{if(mixer.playing)mixer.pause();else{status('Preparing audio from your PC…');mixer.play().then(()=>{if(mixer.playing)status(mixer===preview?'Fast preview · original audio at 1× speed · no mixing.':'Streaming from PC · automatic transitions.');});}};
@@ -169,6 +189,7 @@ $('#seek').onchange=e=>{const item=mixer.plan[mixer.index()];if(item)mixer.seek(
 $('#volume').oninput=e=>mixer.setVolume(Number(e.target.value));
 $('#tempo').onchange=()=>{const tempo=Number($('#tempo').value);if(!Number.isFinite(tempo)||tempo<60||tempo>180){$('#tempo').value=mixer.tempo;status('Choose a tempo between 60 and 180 BPM.');return;}const current=byTrack.get(mixer.plan[mixer.index()]?.track.id),playing=mixer.playing;if(current){mixer.setQueue([current,...ordered(remaining().filter(t=>t.id!==current.id))],tempo);mixer.resumeId=current.id;mixer.seek(0,playing);}status('Mix tempo changed; restarted the current track.');};
 $('#favorite-current').onclick=()=>toggleFavorite(mixer.plan[mixer.index()]?.track.id);
+$('#halloween-current').onclick=()=>toggleHalloween(mixer.plan[mixer.index()]?.track.id);
 if('mediaSession'in navigator)for(const [action,handler]of Object.entries({play:()=>mixer.play(),pause:()=>mixer.pause(),nexttrack:()=>$('#next').click(),previoustrack:()=>$('#previous').click(),seekto:e=>{const p=mixer.plan[mixer.index()];if(p)mixer.seek(p.start+e.seekTime);},seekbackward:e=>mixer.seek(Math.max(mixer.plan[mixer.index()]?.start||0,mixer.time()-(e.seekOffset||15))),seekforward:e=>mixer.seek(Math.min((mixer.plan[mixer.index()]?.end||0)-.01,mixer.time()+(e.seekOffset||15)))}))try{navigator.mediaSession.setActionHandler(action,handler);}catch{}
 setInterval(()=>{if(mixer.playing)update();},250);update();
 setInterval(()=>{if(connected&&!document.hidden){loadFavorites().catch(()=>{});loadTransitions().catch(()=>{});}},15000);

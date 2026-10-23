@@ -39,9 +39,11 @@ def main():
     with favorites_connection() as db:
         db.execute('PRAGMA journal_mode=WAL')
         db.execute('CREATE TABLE IF NOT EXISTS favorites (track_id TEXT PRIMARY KEY)')
+        db.execute('CREATE TABLE IF NOT EXISTS halloween_favorites (track_id TEXT PRIMARY KEY)')
         db.execute('CREATE TABLE IF NOT EXISTS transitions (from_id TEXT NOT NULL,to_id TEXT NOT NULL,created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,PRIMARY KEY(from_id,to_id))')
-    def favorite_ids():
-        with favorites_connection() as db:return [r[0] for r in db.execute('SELECT track_id FROM favorites ORDER BY track_id')]
+    def favorite_ids(halloween=False):
+        table='halloween_favorites' if halloween else 'favorites'
+        with favorites_connection() as db:return [r[0] for r in db.execute(f'SELECT track_id FROM {table} ORDER BY track_id')]
     def transitions():
         with favorites_connection() as db:return {'pairs':[{'from':r[0],'to':r[1],'createdAt':r[2]} for r in db.execute('SELECT from_id,to_id,created_at FROM transitions ORDER BY created_at,from_id,to_id')]}
     origins={'https://paulycee.com','https://www.paulycee.com','http://127.0.0.1:4187','http://localhost:4187'}
@@ -67,6 +69,8 @@ def main():
             if not self.authorized():return
             route=urllib.parse.urlsplit(self.path).path
             match=re.fullmatch(r'/favorites/(\d+)',route)
+            halloween_match=re.fullmatch(r'/favorites/halloween/(\d+)',route)
+            if halloween_match:match=halloween_match
             is_transition=self.command=='POST' and route=='/transitions'
             if not ((self.command=='PUT' and match) or (self.command=='POST' and route=='/favorites/import') or is_transition):self.send_error(404);return
             try:
@@ -85,14 +89,15 @@ def main():
                     selected=body.get('favorite')
                     if type(selected) is not bool:raise ValueError()
                     if selected and match[1] not in paths:self.send_error(404);return
+                    table='halloween_favorites' if halloween_match else 'favorites'
                     with favorites_connection() as db:
-                        if selected:db.execute('INSERT OR IGNORE INTO favorites(track_id) VALUES (?)',(match[1],))
-                        else:db.execute('DELETE FROM favorites WHERE track_id=?',(match[1],))
+                        if selected:db.execute(f'INSERT OR IGNORE INTO {table}(track_id) VALUES (?)',(match[1],))
+                        else:db.execute(f'DELETE FROM {table} WHERE track_id=?',(match[1],))
                 else:
                     ids=body.get('ids')
                     if not isinstance(ids,list) or len(ids)>20000 or not all(isinstance(id,str) for id in ids):raise ValueError()
                     with favorites_connection() as db:db.executemany('INSERT OR IGNORE INTO favorites(track_id) VALUES (?)',[(id,) for id in set(ids) if id in paths])
-                self.json_response({'ids':favorite_ids()})
+                self.json_response({'ids':favorite_ids(bool(halloween_match))})
             except (ValueError,TypeError,json.JSONDecodeError):self.send_error(400,'Invalid favorites request')
             except sqlite3.Error:self.send_error(503,'Cannot save favorites on the PC')
         def do_HEAD(self):self.handle_request(True)
@@ -104,8 +109,8 @@ def main():
                 try:self.json_response(transitions(),head)
                 except sqlite3.Error:self.send_error(503,'Cannot read saved transitions')
                 return
-            if route=='/favorites':
-                try:self.json_response({'ids':favorite_ids()},head)
+            if route in {'/favorites','/favorites/halloween'}:
+                try:self.json_response({'ids':favorite_ids(route.endswith('/halloween'))},head)
                 except sqlite3.Error:self.send_error(503,'Cannot read favorites on the PC')
                 return
             if route=='/library':

@@ -48,6 +48,12 @@ Skip global Favorites is optional and affects all queues, including the Favorite
 
 Good transition saves the last two successfully started, distinct songs in order. Preview mode labels this as a preview pairing, not a beatmatched mix. The button remains available after the handoff until another pairing replaces it or the queue changes. `GET/POST /transitions` stores idempotent ordered pairs in a separate `transitions` table in the external runtime SQLite database; it does not add songs to Favorites. Good transitions is selectable as a deduplicated song playlist, with each intact A → B pair listed above the queue and its own Play pair button. Pair audition preserves A → B even with harmonic mode enabled. Repeat/Favorite exclusions still apply: reset history and/or disable Favorite skipping to replay a saved pair. Cross-browser pair updates refresh periodically; browser sampling history remains local to each tab.
 
+## Halloween Party Favorites
+
+The player has two independent, adjacent 112px heart buttons: the existing normal Favorites heart and Halloween Party. Either or both can be selected for a track. Normal liked hearts remain red; Halloween Party uses an orange-accented button with a red selected heart. Both named lists are available from the playlist selector and adjacent filter buttons, with independent counts and the existing BPM/key sort/filter controls. Shuffle, harmonic picks and session-repeat protection apply to both. Skip Favorites excludes the union of the two lists.
+
+The normal `/favorites`, `/favorites/<id>` and legacy import endpoints are unchanged. `GET /favorites/halloween` and `PUT /favorites/halloween/<id>` use a separate `halloween_favorites` SQLite table in the external state database. Adding/removing either list never edits the other list. Both persist and refresh across browsers. New Halloween lists start empty; existing normal Favorites are not copied or altered.
+
 ## Stop and restart
 
 To restart **only** the audio backend without changing the tunnel address, run `stream/Restart Audio Backend.ps1` locally. It verifies the recorded server identity before stopping it, starts the updated backend hidden, and leaves the tunnel process running.

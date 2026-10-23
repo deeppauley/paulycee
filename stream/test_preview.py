@@ -29,7 +29,8 @@ def main():
                     heart=page.locator('#favorite-current');forward=page.locator('#next')
                     h=heart.bounding_box();n=forward.bounding_box()
                     assert h['height']==n['height'] and h['height']>=112
-                    assert abs((h['x']+h['width']/2)-(n['x']+n['width']/2))<1 and h['y']+h['height']<n['y']
+                    party=page.locator('#halloween-current').bounding_box()
+                    assert h['x']<party['x'] and abs(h['y']-party['y'])<1 and h['y']+h['height']<n['y']
                     heart.click();page.wait_for_function('(el)=>el.getAttribute(String.fromCharCode(97,114,105,97,45,112,114,101,115,115,101,100))===String.fromCharCode(116,114,117,101)',arg=heart.element_handle())
                     assert heart.evaluate('(el)=>getComputedStyle(el).color')=='rgb(255, 59, 92)'
                     for _ in range(7):

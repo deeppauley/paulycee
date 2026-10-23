@@ -62,8 +62,14 @@ def main():
             except urllib.error.HTTPError as e:assert e.code==400
             assert write('/favorites/1001',{'favorite':True})['ids']==['1001']
             assert write('/favorites/1001',{'favorite':True})['ids']==['1001']
+            assert write('/favorites/halloween/1001',{'favorite':True})['ids']==['1001']
+            assert write('/favorites/halloween/1001',{'favorite':True})['ids']==['1001']
+            assert write('/favorites/halloween/1002',{'favorite':True})['ids']==['1001','1002']
             assert write('/favorites/import',{'ids':['1001','1002','9999']},'POST')['ids']==['1001','1002']
             assert write('/favorites/1001',{'favorite':False})['ids']==['1002']
+            assert write('/favorites/halloween/1002',{'favorite':False})['ids']==['1001']
+            with get('/favorites') as r:assert json.load(r)['ids']==['1002']
+            with get('/favorites/halloween') as r:assert json.load(r)['ids']==['1001']
             try:write('/favorites/9999',{'favorite':True});raise AssertionError('Accepted unknown track')
             except urllib.error.HTTPError as e:assert e.code==404
             process.terminate();process.wait(timeout=10)
@@ -75,6 +81,7 @@ def main():
                 except OSError:time.sleep(.05)
             else:raise AssertionError('Server did not restart')
             with get('/transitions') as r:assert json.load(r)['pairs'][0]['to']=='1002'
+            with get('/favorites/halloween') as r:assert json.load(r)['ids']==['1001']
             print('PASS: nested playlist order, no source paths, auth, CORS, byte ranges, suffix ranges, invalid ranges and path allowlist.')
             print('PASS: global favorite add/remove, idempotent saves, merge import, unknown-track rejection and persistence after server restart.')
         finally:process.terminate();process.wait(timeout=10)
