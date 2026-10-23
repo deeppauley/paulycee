@@ -25,6 +25,11 @@ def library(xml,playlist_dir=None):
     if playlist_dir:
         for file in sorted(pathlib.Path(playlist_dir).glob('*.json')):
             imported=json.loads(file.read_text(encoding='utf-8-sig'))
+            for extra in imported.get('extraTracks',[]):
+                track=dict(extra['track']);id=track['id']
+                if id not in paths:
+                    path=pathlib.Path(extra['path']);paths[id]=path
+                    track['available']=path.is_file();tracks.append(track)
             playlists.append({'id':'import-'+file.stem,'name':imported['name'],'tracks':[str(id) for id in imported['tracks'] if str(id) in paths],'rehearsal':True})
     return {'name':pathlib.Path(xml).stem,'tracks':tracks,'playlists':playlists},paths
 

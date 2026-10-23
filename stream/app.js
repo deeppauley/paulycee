@@ -22,7 +22,8 @@ document.querySelector('.queue').before(pairPanel);
 document.querySelector('.transport').after($('#save-transition'),$('#transition-context'));
 function saveHeard(){try{sessionStorage.setItem('pauly-stream-heard:v1',JSON.stringify([...heard]));}catch{}$('#sample-count').textContent=heard.size+' sampled';}
 function favoriteKeys(){favoriteAudio=new Set(catalog.tracks.filter(t=>favorites.has(t.id)||halloweenFavorites.has(t.id)).map(audioKey));}
-function canPlay(track){return !heard.has(audioKey(track))&&(!$('#skip-favorites').checked||!favoriteAudio.has(audioKey(track)));}
+function isRehearsal(){return catalog.playlists.some(p=>p.id===$('#playlist').value&&p.rehearsal);}
+function canPlay(track){return isRehearsal()||(!heard.has(audioKey(track))&&(!$('#skip-favorites').checked||!favoriteAudio.has(audioKey(track))));}
 function recordHeard(track){
   const original=byTrack.get(track.id)||track;
   if(pairPrevious&&pairPrevious.id!==original.id)lastPair={from:pairPrevious.id,to:original.id};
@@ -30,7 +31,7 @@ function recordHeard(track){
   heard.add(audioKey(original));saveHeard();if(changed){renderRows();if($('#queue-order').value==='harmonic'&&!pairAudition)recommendNext(original);}
   update();
 }
-function remaining(){return eligible(playlistTracks(),{heard,favorites:favoriteAudio,avoidFavorites:$('#skip-favorites').checked});}
+function remaining(){return eligible(playlistTracks(),{heard:isRehearsal()?new Set():heard,favorites:favoriteAudio,avoidFavorites:!isRehearsal()&&$('#skip-favorites').checked});}
 function ordered(tracks,reference=lastAudible){const order=$('#queue-order').value;if(order==='shuffle')return shuffled(tracks);if(order==='harmonic'&&tracks.length){const first=reference||tracks[0];return reference?candidates(first,tracks,tracks.length).map(r=>r.track):[first,...candidates(first,tracks.slice(1),tracks.length).map(r=>r.track)];}return tracks;}
 async function energyFor(track){if(!track||Number.isFinite(track.energy))return;try{const data=await request('/energy/'+encodeURIComponent(track.id));if(Number.isFinite(data.energy))track.energy=data.energy;}catch{}}
 async function recommendNext(reference){
@@ -179,7 +180,7 @@ async function connect(){
     try{const prefs=JSON.parse(sessionStorage.getItem('pauly-stream-discovery:'+server)||'{}');if(['regular','shuffle','harmonic'].includes(prefs.order))$('#queue-order').value=prefs.order;$('#skip-favorites').checked=prefs.skip===true;}catch{}
     await favoriteWrites;await loadFavorites(true);
     await loadTransitions();
-    for(const p of catalog.playlists)$('#playlist').add(new Option(p.name,p.id));
+    let pinned=0;for(const p of catalog.playlists){const option=new Option(p.name,p.id);if(p.rehearsal)$('#playlist').add(option,pinned++);else $('#playlist').add(option);}
     const requestedPlaylist=new URLSearchParams(location.search).get('playlist');
     if(requestedPlaylist&&catalog.playlists.some(p=>p.id===requestedPlaylist))$('#playlist').value=requestedPlaylist;
     else if([...$('#playlist').options].some(p=>p.value===previousPlaylist))$('#playlist').value=previousPlaylist;
