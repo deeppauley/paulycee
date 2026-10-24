@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#050811">
+  <meta name="description" content="Light me up! Show Pauly Cee your screen after 5 PM for free light-up wristbands.">
+  <title>LIGHT ME UP! · Pauly Cee</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;600;800&family=Unbounded:wght@700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="ambience" aria-hidden="true">
+  <div class="color-field field-cyan" aria-hidden="true"></div>
+  <div class="color-field field-pink" aria-hidden="true"></div>
+  <div class="color-field field-lime" aria-hidden="true"></div>
+  </div>
+  <div class="frame" aria-hidden="true"></div>
+  <a class="back" href="../QR/">← Back to links</a>
+  <main>
+    <section id="welcome" aria-labelledby="welcome-title">
+      <p class="eyebrow">PAULY CEE / CROWD SIGNAL</p>
+      <h1 id="welcome-title" data-glow-copy="headline">LIGHT ME UP!</h1>
+      <p class="offer" data-glow-copy="offer">Free light-up wristbands starting at 5 PM</p>
+      <ol class="steps">
+        <li><span aria-hidden="true">↻</span> Turn your phone sideways.</li>
+        <li><span aria-hidden="true">☼</span> Raise your screen brightness.</li>
+        <li><span aria-hidden="true">↗</span> <span data-glow-copy="holdInstruction">After 5 PM, hold your screen toward the DJ.</span></li>
+      </ol>
+      <button id="start" class="start">START THE GLOW <span aria-hidden="true">↗</span></button>
+      <p class="fine-print">A signal to the booth, not a guaranteed claim.</p>
+    </section>
+    <section id="signal" hidden aria-label="Wristband request display">
+      <button id="exit" class="exit" aria-label="Exit glow display">✕ <span>Exit</span></button>
+      <p class="rotate-hint">↻ Turn your phone sideways</p>
+      <div class="logo-halo" aria-hidden="true"></div>
+      <!-- Established homepage logo: Unbounded, tight tracking and the two CEE dots. -->
+      <div class="artist-logo" role="img" aria-label="Pauly Cee">
+        <span>PAULY</span><span class="cee-logo">CEE</span>
+      </div>
+      <h2 data-glow-copy="headline">LIGHT ME UP!</h2>
+      <p class="offer" data-glow-copy="offer">Free light-up wristbands starting at 5 PM</p>
+      <p class="instruction" data-glow-copy="instruction">After 5 PM, show this screen to the DJ.</p>
+    </section>
+  </main>
+  <script type="module" src="app.js"></script>
+</body>
+</html>

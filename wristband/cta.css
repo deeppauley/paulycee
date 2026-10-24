@@ -1,0 +1,7 @@
+.link-card.glow-cta{position:relative;border:1px solid #61d6ff;background:linear-gradient(115deg,#053e55,#20102c);box-shadow:0 0 30px #00d9ff15;min-height:125px}
+.glow-cta strong{font-size:19px;color:#b8ff4c;letter-spacing:-.04em}
+.glow-cta small{color:#e8f3f7;font-size:12px;line-height:1.5}
+.glow-cta small:last-child{color:#b4c7d3;font-size:11px}
+.glow-cta .wristband-icon{font-size:32px;color:#61d6ff}
+.glow-cta:hover{background:linear-gradient(115deg,#07546e,#351346);border-color:#b8ff4c}
+.link-card:focus-visible{outline:3px solid #b8ff4c;outline-offset:5px}
