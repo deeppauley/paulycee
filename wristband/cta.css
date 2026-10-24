@@ -5,3 +5,5 @@
 .glow-cta .wristband-icon{font-size:32px;color:#61d6ff}
 .glow-cta:hover{background:linear-gradient(115deg,#07546e,#351346);border-color:#b8ff4c}
 .link-card:focus-visible{outline:3px solid #b8ff4c;outline-offset:5px}
+.venue-welcome{margin-top:28px;padding:20px;border:1px solid #2775ff88;background:linear-gradient(120deg,#2775ff25,#39e7ff0c);border-radius:10px}
+.venue-welcome[hidden]{display:none!important}.venue-welcome>span{color:#88eaff;font:500 9px 'DM Mono',monospace;letter-spacing:.13em}.venue-welcome p{margin:12px 0 0;font:800 clamp(17px,4.8vw,29px)/1.3 'Unbounded',sans-serif;letter-spacing:-.05em;color:#f1f7ff;text-wrap:balance}.venue-welcome:not([hidden])+.intro{padding-top:4svh}
