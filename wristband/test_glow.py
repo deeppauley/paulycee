@@ -38,6 +38,13 @@ def run(root,production=False):
                 page.locator('#start').click();page.wait_for_timeout(100)
                 assert page.locator('#signal').is_visible();assert page.evaluate('calls.fullscreen')==1
                 assert page.evaluate('calls.wake')==1
+                assert page.locator('.beat-wash').evaluate('(el)=>getComputedStyle(el).animationDuration').startswith('0.491803s')
+                samples=[]
+                for _ in range(6):
+                    samples.append(float(page.locator('.beat-wash').evaluate('(el)=>getComputedStyle(el).opacity')));page.wait_for_timeout(75)
+                assert max(samples)-min(samples)>.15,'Beat pulse is not visibly changing'
+                page.locator('#effects').click();assert page.locator('.beat-wash').evaluate('(el)=>getComputedStyle(el).animationPlayState').startswith('paused')
+                page.locator('#effects').click()
                 for width,height in [(390,844),(844,390),(320,568),(568,320),(360,640),(640,360),(1024,768)]:
                     page.set_viewport_size({'width':width,'height':height});page.wait_for_timeout(50)
                     assert page.evaluate('document.documentElement.scrollWidth<=innerWidth'),(width,height,'horizontal overflow')
@@ -60,6 +67,9 @@ def run(root,production=False):
                 page.emulate_media(reduced_motion='reduce');page.locator('#start').click()
                 assert page.locator('.frame').evaluate('(el)=>getComputedStyle(el).animationName')=='none'
                 assert page.locator('.logo-halo').evaluate('(el)=>getComputedStyle(el).animationName')=='none'
+                assert page.locator('#effects').inner_text()=='Enable pulse'
+                page.locator('#effects').click();assert page.locator('.beat-wash').evaluate('(el)=>getComputedStyle(el).animationName').startswith('beat-pulse')
+                page.locator('#effects').click()
                 page.keyboard.press('Escape');assert page.locator('#welcome').is_visible()
                 page.evaluate('Object.defineProperty(navigator,\'wakeLock\',{value:{request:async()=>{throw new Error(\'Denied\');}},configurable:true})')
                 page.locator('#start').click();page.wait_for_timeout(50);assert page.locator('#signal').is_visible()

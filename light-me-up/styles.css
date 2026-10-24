@@ -15,3 +15,18 @@ body.active{height:100svh;height:100dvh;overflow:hidden}body.active .back{displa
 @media(max-height:600px) and (orientation:portrait){#signal{gap:2dvh;padding-top:66px}.rotate-hint{margin:0}.artist-logo{font-size:13vw}#signal h2{margin-top:1dvh}#signal .offer{font-size:14px}}
 @keyframes drift{to{transform:translate(18vmax,12vmax) scale(1.15)}}@keyframes edge{0%{border-color:var(--cyan);box-shadow:inset 0 0 22px #39e7ff33,0 0 15px #39e7ff55}50%{border-color:var(--pink);box-shadow:inset 0 0 22px #ff38b622,0 0 15px #ff38b655}100%{border-color:var(--lime);box-shadow:inset 0 0 22px #c4ff4822,0 0 15px #c4ff4855}}@keyframes halo{to{transform:translate(-50%,-50%) scale(1.13);opacity:.5}}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important;will-change:auto!important}.field-cyan{opacity:.85}.frame{border-color:var(--cyan)}}
+/* One smooth colored pulse every 60/122 seconds. No white/black strobe. */
+.beat-wash{position:absolute;inset:0;opacity:0;background:linear-gradient(120deg,#00bfe9,#273cff 35%,#ec168e 68%,#90cf00);background-size:250% 250%;pointer-events:none}
+.effects-on .beat-wash{animation:beat-pulse 491.803ms ease-out infinite,color-flow 3934.426ms ease-in-out infinite alternate}
+.effects-on .frame{border-width:4px;animation:beat-edge 491.803ms ease-out infinite}
+.effects-on .logo-halo{animation:beat-halo 491.803ms ease-out infinite}
+#signal:before{content:"";position:absolute;z-index:-1;inset:0;pointer-events:none;background:radial-gradient(ellipse at center,#020714db 0%,#020714b8 38%,#02071422 80%)}
+.artist-logo,#signal h2,#signal .offer,.instruction{text-shadow:0 2px 12px #000,0 0 30px #0008}
+.effects{position:absolute;z-index:5;top:max(18px,env(safe-area-inset-top));right:max(20px,calc(env(safe-area-inset-right) + 10px));min-height:44px;padding:8px 12px;border:1px solid #ffffff55;border-radius:30px;background:#050811db;color:#e4f4ff;font:500 11px 'DM Mono',monospace}
+.motion-warning{font-size:12px;line-height:1.5;color:#d1dce4;margin:0 0 14px}.effects-paused *,.effects-paused *:before,.effects-paused *:after{animation-play-state:paused!important}
+@keyframes beat-pulse{0%,100%{opacity:.38}18%{opacity:.95}}
+@keyframes color-flow{0%{background-position:0% 30%}100%{background-position:100% 80%}}
+@keyframes beat-edge{0%,100%{border-color:#39e7ff;box-shadow:inset 0 0 22px #39e7ff55,0 0 15px #39e7ff55}18%{border-color:#c4ff48;box-shadow:inset 0 0 35px #39e7ff99,0 0 20px #c4ff4877}}
+@keyframes beat-halo{0%,100%{transform:translate(-50%,-50%) scale(.96);opacity:.5}18%{transform:translate(-50%,-50%) scale(1.05);opacity:1}}
+/* Reduced Motion defaults to static. Only an explicit Enable pulse tap opts in. */
+@media(prefers-reduced-motion:reduce){.effects-on .beat-wash{animation:beat-pulse 491.803ms ease-out infinite,color-flow 3934.426ms ease-in-out infinite alternate!important}.effects-on .frame{animation:beat-edge 491.803ms ease-out infinite!important}.effects-on .logo-halo{animation:beat-halo 491.803ms ease-out infinite!important}}

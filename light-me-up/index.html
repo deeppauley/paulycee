@@ -9,10 +9,11 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;600;800&family=Unbounded:wght@700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=20261024-pulse">
 </head>
 <body>
   <div class="ambience" aria-hidden="true">
+  <div class="beat-wash"></div>
   <div class="color-field field-cyan" aria-hidden="true"></div>
   <div class="color-field field-pink" aria-hidden="true"></div>
   <div class="color-field field-lime" aria-hidden="true"></div>
@@ -29,11 +30,14 @@
         <li><span aria-hidden="true">☼</span> Raise your screen brightness.</li>
         <li><span aria-hidden="true">↗</span> <span data-glow-copy="holdInstruction">After 5 PM, hold your screen toward the DJ.</span></li>
       </ol>
+      <p class="motion-warning">Bright pulsing colors · 122 BPM. Avoid if sensitive to flashing lights. You can pause effects anytime.</p>
+      <p id="motion-note" class="motion-warning" hidden>Reduce Motion is on. Pulse starts off; you can choose “Enable pulse” on the next screen.</p>
       <button id="start" class="start">START THE GLOW <span aria-hidden="true">↗</span></button>
       <p class="fine-print">A signal to the booth, not a guaranteed claim.</p>
     </section>
     <section id="signal" hidden aria-label="Wristband request display">
       <button id="exit" class="exit" aria-label="Exit glow display">✕ <span>Exit</span></button>
+      <button id="effects" class="effects" aria-pressed="false">Enable pulse</button>
       <p class="rotate-hint">↻ Turn your phone sideways</p>
       <div class="logo-halo" aria-hidden="true"></div>
       <!-- Established homepage logo: Unbounded, tight tracking and the two CEE dots. -->
@@ -45,6 +49,6 @@
       <p class="instruction" data-glow-copy="instruction">After 5 PM, show this screen to the DJ.</p>
     </section>
   </main>
-  <script type="module" src="app.js"></script>
+  <script type="module" src="app.js?v=20261024-pulse"></script>
 </body>
 </html>

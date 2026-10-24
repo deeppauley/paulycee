@@ -7,7 +7,7 @@ Local implementation only. Do not push/deploy until approved.
 - Edit timing, giveaway item, and headline in `wristband/config.js`. Both pages derive timing/instructions from it. HTML contains readable fallback copy if modules cannot load; keep those fallbacks aligned when changing the event time.
 - Early access stays open. No countdown, clock check, claim database, payment, social gate, or backend.
 - Start requests fullscreen, wake lock, then landscape lock where available. Denied/absent APIs leave the display usable. Brightness is a manual instruction only. Exit restores the welcome screen; Back returns to QR links. Visibility and page lifecycle events release/reacquire wake lock as appropriate.
-- CSS uses slow transform-based color fields, border-color animation, and a logo halo; the logo itself is stable. Reduced motion disables all animation.
+- The active display adds bright moving cyan/pink/lime fields, with a smooth pulse every 491.803 ms (122 BPM), a pulsing border and halo; the logo stays stable. This is a fixed visual tempo, not live music synchronization. No abrupt white/black strobes. A warning precedes activation and Pause effects freezes motion. Reduced Motion starts static; an explicit Enable pulse tap opts into the beat effects without changing the device setting.
 
 ## Validation
 

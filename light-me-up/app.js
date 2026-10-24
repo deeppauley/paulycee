@@ -3,6 +3,18 @@ applyGiveawayCopy();
 const start=document.querySelector('#start'),exit=document.querySelector('#exit');
 const welcome=document.querySelector('#welcome'),signal=document.querySelector('#signal');
 let active=false,suspended=false,wake=null,wakePending=false,ownedFullscreen=false;
+const effects=document.querySelector('#effects'),reduced=matchMedia('(prefers-reduced-motion: reduce)');
+let effectsEnabled=!reduced.matches;
+function updateEffects(){
+  document.body.classList.toggle('effects-on',active&&effectsEnabled);
+  document.body.classList.toggle('effects-paused',active&&!effectsEnabled);
+  effects.textContent=effectsEnabled?'Pause effects':'Enable pulse';
+  effects.setAttribute('aria-pressed',String(effectsEnabled));
+  document.querySelector('#motion-note').hidden=!reduced.matches;
+}
+effects.addEventListener('click',()=>{effectsEnabled=!effectsEnabled;updateEffects();});
+reduced.addEventListener('change',()=>{effectsEnabled=!reduced.matches;updateEffects();});
+updateEffects();
 
 async function releaseWake(){const old=wake;wake=null;try{await old?.release();}catch{}}
 async function acquireWake(){
@@ -24,10 +36,12 @@ async function immersive(){
 }
 start.addEventListener('click',()=>{
   active=true;welcome.hidden=true;signal.hidden=false;document.body.classList.add('active');
+  updateEffects();
   exit.focus({preventScroll:true});void immersive();void acquireWake();
 });
 async function stop(){
   active=false;signal.hidden=true;welcome.hidden=false;document.body.classList.remove('active');
+  updateEffects();
   void releaseWake();
   try{screen.orientation?.unlock?.();}catch{}
   if(ownedFullscreen){ownedFullscreen=false;try{await document.exitFullscreen();}catch{}}
