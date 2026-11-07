@@ -41,6 +41,7 @@ def run(root):
             assert '7:30 PM' in page.locator('#harvard-night-market').inner_text()
             assert page.locator('#past-events #halloween-event .halloween-photo').count()==1
             assert page.locator('#past-events #asian-food-beer-festival').count()==1
+            assert page.locator('#asian-food-beer-festival .beer-festival-photo').count()==1
             graph=json.loads(page.locator('script[type="application/ld+json"]').first.text_content())['@graph']
             assert next(e for e in graph if e['@id'].endswith('#harvard-night-market'))['startDate']=='2026-11-14T19:30:00-05:00'
             page.locator('.remix-play').click();page.wait_for_function('document.querySelector(\'.remix-audio\').currentTime>.1')
@@ -66,6 +67,7 @@ def run(root):
                 if root==ROOT and width in (390,1440):
                     page.locator('.remix-player').screenshot(path=str(SHOTS/f'player-{width}.png'))
                     page.locator('#halloween-event').screenshot(path=str(SHOTS/f'halloween-{width}.png'))
+                    page.locator('#asian-food-beer-festival').screenshot(path=str(SHOTS/f'beer-festival-{width}.png'))
             assert not errors,errors
             b.close();print(root.name+': PASS ordered two-track playlist, playback/seek/auto-next, pause, November 14 date/time/schema, past events/photo and mobile/desktop layout')
     finally:server.shutdown();server.server_close()
