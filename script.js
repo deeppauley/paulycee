@@ -7,6 +7,31 @@ const remixPlay = document.querySelector('.remix-play');
 const remixSeek = document.querySelector('.remix-seek');
 const remixFill = document.querySelector('.remix-wave-fill');
 const remixTime = document.querySelector('.remix-time');
+const remixChoice = document.querySelector('.remix-track-select');
+const remixTracks = [
+  {title:'Another One',artist:'Roger Sanchez',src:'assets/pauly-cee-roger-sanchez-another-one-remix.mp3'},
+  {title:"Movin' to the Sun",artist:'HUGEL',src:'assets/pauly-cee-movin-to-the-sun-remix-preview.mp3'}
+];
+let remixIndex = 0;
+function remixLabels(){
+  const track=remixTracks[remixIndex];
+  document.querySelector('.remix-details strong').textContent=track.title.toUpperCase();
+  document.querySelector('.remix-details>span').textContent=track.artist.toUpperCase()+' · PAULY CEE REMIX';
+  document.querySelector('.remix-badge span').textContent=remixIndex===0?'LATEST REMIX':'REMIX PREVIEW';
+  remixPlay.setAttribute('aria-label',(remixAudio.paused?'Play ':'Pause ')+track.title+' remix');
+  remixChoice.value=String(remixIndex);
+  document.querySelector('.remix-previous').disabled=remixIndex===0;
+  document.querySelector('.remix-next').disabled=remixIndex===remixTracks.length-1;
+}
+function loadRemix(index,autoplay=false){
+  remixAudio.pause();remixIndex=index;remixAudio.src=remixTracks[index].src;remixAudio.load();
+  remixPlay.classList.remove('playing');remixPlay.querySelector('span').textContent='▶';
+  remixLabels();updateRemixPlayer();if(autoplay)remixPlay.click();
+}
+remixChoice.addEventListener('change',()=>loadRemix(Number(remixChoice.value),!remixAudio.paused));
+document.querySelector('.remix-previous').addEventListener('click',()=>{if(remixIndex>0)loadRemix(remixIndex-1,!remixAudio.paused);});
+document.querySelector('.remix-next').addEventListener('click',()=>{if(remixIndex<remixTracks.length-1)loadRemix(remixIndex+1,!remixAudio.paused);});
+remixLabels();
 
 function trackEvent(name, parameters = {}) {
   if (typeof window.gtag === 'function') window.gtag('event', name, parameters);
@@ -21,7 +46,7 @@ function updateRemixPlayer() {
   const progress = remixAudio.duration ? (remixAudio.currentTime / remixAudio.duration) * 100 : 0;
   remixSeek.value = progress;
   remixFill.style.width = `${progress}%`;
-  remixTime.textContent = `${formatTime(remixAudio.currentTime)} / ${formatTime(remixAudio.duration || 111)}`;
+  remixTime.textContent = `${formatTime(remixAudio.currentTime)} / ${formatTime(remixAudio.duration)}`;
 }
 
 remixPlay.addEventListener('click', async () => {
@@ -30,17 +55,17 @@ remixPlay.addEventListener('click', async () => {
     soundButton.classList.remove('on');
     soundButton.querySelector('.sound-label').textContent = 'SOUND OFF';
     await remixAudio.play().catch(() => {});
-    if (!remixAudio.paused) trackEvent('remix_preview_play', { track_name: "Movin' to the Sun", remix_artist: 'Pauly Cee' });
+    if (!remixAudio.paused) trackEvent('remix_preview_play', { track_name: remixTracks[remixIndex].title, remix_artist: 'Pauly Cee' });
   } else {
     remixAudio.pause();
   }
 });
 
-remixAudio.addEventListener('play', () => { remixPlay.classList.add('playing'); remixPlay.querySelector('span').textContent = 'Ⅱ'; });
-remixAudio.addEventListener('pause', () => { remixPlay.classList.remove('playing'); remixPlay.querySelector('span').textContent = '▶'; });
+remixAudio.addEventListener('play', () => { remixPlay.classList.add('playing'); remixPlay.querySelector('span').textContent = 'Ⅱ';remixLabels(); });
+remixAudio.addEventListener('pause', () => { remixPlay.classList.remove('playing'); remixPlay.querySelector('span').textContent = '▶';remixLabels(); });
 remixAudio.addEventListener('timeupdate', updateRemixPlayer);
 remixAudio.addEventListener('loadedmetadata', updateRemixPlayer);
-remixAudio.addEventListener('ended', () => { remixAudio.currentTime = 0; updateRemixPlayer(); });
+remixAudio.addEventListener('ended', () => {if(remixIndex<remixTracks.length-1)loadRemix(remixIndex+1,true);else{remixAudio.currentTime=0;updateRemixPlayer();} });
 remixSeek.addEventListener('input', () => {
   if (remixAudio.duration) remixAudio.currentTime = (Number(remixSeek.value) / 100) * remixAudio.duration;
 });

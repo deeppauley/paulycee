@@ -1,4 +1,8 @@
 /* Keep the upcoming calendar separate from completed performances. */
+.past-events .halloween-recap{margin-top:0;margin-bottom:32px;min-height:680px}.halloween-photo{background:url('assets/pauly-cee-halloween-2026.webp') center 68%/cover no-repeat;pointer-events:none}.past-festival{margin-bottom:32px}
+.past-events .halloween-recap{grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr)}.halloween-recap .halloween-copy{min-width:0;padding:clamp(24px,4vw,60px)}.halloween-recap .halloween-copy h3{font-size:clamp(36px,5.2vw,82px)}
+@media(max-width:760px){.past-events .halloween-recap{min-height:0}.halloween-photo{height:560px;background-position:center 70%}.past-events .past-festival{margin-top:0}.past-events-head{flex-wrap:wrap}}
+@media(max-width:760px){.past-events .halloween-recap{grid-template-columns:minmax(0,1fr)}.halloween-recap .halloween-copy h3{font-size:8.2vw}}
 #upcoming{grid-template-rows:auto auto auto}
 #upcoming .event-directory{margin-bottom:0}
 #upcoming .halloween-event{margin-top:3vw}

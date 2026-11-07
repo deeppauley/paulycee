@@ -21,11 +21,11 @@ try:
         page.reload();assert page.locator('#venue-welcome').is_hidden()
         page.goto(f'http://127.0.0.1:{server.server_port}/')
         event=page.locator('#harvard-night-market')
-        assert event.locator('time').get_attribute('datetime')=='2026-11-07'
-        assert 'TBD' in event.inner_text()
+        assert event.locator('time').get_attribute('datetime')=='2026-11-14T19:30:00-05:00'
+        assert '7:30 PM' in event.inner_text()
         schemas=page.locator('script[type="application/ld+json"]').all_text_contents()
         graph=json.loads(schemas[0])['@graph'];entry=next(e for e in graph if e.get('@id','').endswith('#harvard-night-market'))
-        assert entry['startDate']=='2026-11-07'
+        assert entry['startDate']=='2026-11-14T19:30:00-05:00'
         b.close()
-        print('PASS welcome visible before 7 PM Boston time, expires while open and stays hidden on refresh in another timezone; Night Market visible and structured date November 7, time TBD')
+        print('PASS timed welcome expiry; Night Market visible and structured date November 14 at 7:30 PM')
 finally:server.shutdown();server.server_close()

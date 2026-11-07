@@ -89,8 +89,8 @@
         "@type": "MusicEvent",
         "@id": "https://paulycee.com/#harvard-night-market",
         "name": "Pauly Cee at Harvard Square Night Market",
-        "description": "Pauly Cee performs at Harvard Square Night Market on November 7, 2026. DJ set time is to be determined.",
-        "startDate": "2026-11-07",
+        "description": "Pauly Cee performs at Harvard Square Night Market on Saturday, November 14, 2026, at 7:30 PM in Cambridge, Massachusetts.",
+        "startDate": "2026-11-14T19:30:00-05:00",
         "eventStatus": "https://schema.org/EventScheduled",
         "eventAttendanceMode": "https://schema.org/OfflineEventAttendanceMode",
         "location": {
@@ -108,27 +108,35 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Manrope:wght@400;500;600&family=Unbounded:wght@700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css?v=20260929-1">
-  <link rel="stylesheet" href="events.css?v=20261012-1">
+  <link rel="stylesheet" href="events.css?v=20261107">
   <link rel="stylesheet" href="hero-portrait.css?v=20261009-1">
   <link rel="stylesheet" href="kspace.css?v=20260824-1">
-  <link rel="stylesheet" href="remix-player.css?v=20260822-1">
+  <link rel="stylesheet" href="remix-player.css?v=20261107">
 </head>
 <body>
   <aside class="remix-player" aria-label="Latest remix preview">
     <audio class="remix-audio" preload="metadata">
-      <source src="assets/pauly-cee-movin-to-the-sun-remix-preview.mp3" type="audio/mpeg">
+      <source src="assets/pauly-cee-roger-sanchez-another-one-remix.mp3" type="audio/mpeg">
     </audio>
     <div class="remix-badge"><i></i><span>LATEST REMIX</span></div>
-    <button class="remix-play" type="button" aria-label="Play Movin' to the Sun remix preview"><span>▶</span></button>
+    <div class="remix-controls">
+      <button class="remix-previous" type="button" aria-label="Previous remix">‹</button>
+      <button class="remix-play" type="button" aria-label="Play Another One remix"><span>▶</span></button>
+      <button class="remix-next" type="button" aria-label="Next remix">›</button>
+    </div>
     <div class="remix-details">
-      <strong>MOVIN' TO THE SUN</strong>
-      <span>HUGEL · PAULY CEE REMIX <em>PREVIEW</em></span>
+      <strong>ANOTHER ONE</strong>
+      <span>ROGER SANCHEZ · PAULY CEE REMIX</span>
+      <select class="remix-track-select" aria-label="Choose a Pauly Cee remix">
+        <option value="0">1 · Another One — Roger Sanchez (latest)</option>
+        <option value="1">2 · Movin' to the Sun — HUGEL</option>
+      </select>
     </div>
     <div class="remix-wave">
       <div class="remix-wave-fill"></div>
       <input class="remix-seek" type="range" min="0" max="100" value="0" step="0.1" aria-label="Seek through remix preview">
     </div>
-    <time class="remix-time">0:00 / 1:51</time>
+    <time class="remix-time">0:00 / 4:03</time>
   </aside>
 
   <header class="nav" id="top">
@@ -181,43 +189,18 @@
         <span class="event-status"><i></i> UPCOMING</span>
       </div>
       <div class="event-directory" aria-label="Upcoming event schedule">
-        <article>
-          <time datetime="2026-10-24"><strong>OCT 24</strong><span>2026</span></time>
-          <div><h3><a href="#asian-food-beer-festival">Boston Asian Food &amp; Beer Tasting Festival</a></h3><p>Boston City Hall Plaza, Boston, MA · DJ set time: TBD</p></div>
-        </article>
-        <article>
-          <time datetime="2026-10-30"><strong>OCT 30</strong><span>2026</span></time>
-          <div><h3>Halloween Party</h3><p>Newburyport, MA · Featuring Pauly Cee</p></div>
-        </article>
         <article id="harvard-night-market">
-          <time datetime="2026-11-07"><strong>NOV 7</strong><span>2026</span></time>
-          <div><h3>Harvard Square Night Market</h3><p>Harvard Square, Cambridge, MA · DJ set time: TBD</p></div>
+          <time datetime="2026-11-14T19:30:00-05:00"><strong>NOV 14</strong><span>2026</span></time>
+          <div><h3>Harvard Square Night Market</h3><p>Saturday · Harvard Square, Cambridge, MA · DJ set: 7:30 PM</p></div>
         </article>
       </div>
-      <article class="festival-announcement" id="asian-food-beer-festival" aria-labelledby="asian-food-beer-title">
-        <div class="festival-announcement-date"><span>OCTOBER</span><strong>24</strong><span>2026 / SATURDAY</span></div>
+      <article class="festival-announcement" aria-labelledby="night-market-title">
+        <div class="festival-announcement-date"><span>NOVEMBER</span><strong>14</strong><span>2026 / SATURDAY</span></div>
         <div class="festival-announcement-copy">
-          <p class="section-index">LIVE / PAULY CEE</p>
-          <h3 id="asian-food-beer-title">BOSTON ASIAN FOOD<br>&amp; <em>BEER TASTING FESTIVAL</em></h3>
-          <p>Boston City Hall Plaza<br>1 City Hall Square, Boston, MA</p>
-          <p class="festival-set-time">DJ SET TIME <strong>TBD</strong></p>
-          <a class="festival-ticket-link" href="https://www.eventbrite.com/e/boston-asian-food-beer-tasting-festival-2026-tickets-1985537470022" target="_blank" rel="noopener noreferrer">EVENT DETAILS &amp; TICKETS <span aria-hidden="true">↗</span></a>
-        </div>
-      </article>
-      <article class="halloween-event" id="halloween-event" aria-labelledby="halloween-title">
-        <div class="halloween-art" aria-hidden="true">
-          <span class="crescent"></span>
-          <svg class="bats" viewBox="0 0 220 120">
-            <path d="M5 38q22-25 47-5 18-30 38 1 26-17 48 7-28-5-43 20-21-15-40 3Q38 43 5 38Z"/>
-            <path d="M123 12q12-14 26-3 10-17 22 1 14-10 27 4-16-2-24 11-12-8-22 2-10-14-33-15Z"/>
-            <path d="M143 78q14-16 30-3 11-20 25 1 16-11 31 5-18-3-27 13-14-10-26 2-12-16-39-18Z"/>
-          </svg>
-          <span class="event-number">OCT 30 / 2026</span>
-        </div>
-        <div class="halloween-copy">
-          <p><time datetime="2026-10-30">FRIDAY / OCTOBER 30 / 2026</time></p>
-          <h3 id="halloween-title">HALLOWEEN<br><em>PARTY</em></h3>
-          <span>NEWBURYPORT, MASSACHUSETTS</span>
+          <p class="section-index">UP NEXT / PAULY CEE</p>
+          <h3 id="night-market-title">HARVARD SQUARE<br><em>NIGHT MARKET</em></h3>
+          <p>Harvard Square<br>Cambridge, Massachusetts</p>
+          <p class="festival-set-time">DJ SET <strong>7:30 PM</strong></p>
         </div>
       </article>
     </section>
@@ -227,6 +210,22 @@
         <div><p class="section-index">FROM THE STAGE / MASSACHUSETTS</p><h2 class="events-heading" id="past-events-title">PAST <em>EVENTS</em></h2></div>
         <span class="section-index">LIVE / OCTOBER 2026</span>
       </div>
+      <article class="halloween-event halloween-recap" id="halloween-event" aria-labelledby="halloween-title">
+        <div class="halloween-art halloween-photo" role="img" aria-label="Pauly Cee and friends behind the Pioneer DJ decks at the Halloween party under purple lights."></div>
+        <div class="halloween-copy">
+          <p><time datetime="2026-10-30">FRIDAY / OCTOBER 30 / 2026</time></p>
+          <h3 id="halloween-title">HALLOWEEN<br><em>PARTY</em></h3>
+          <span>NEWBURYPORT, MASSACHUSETTS</span>
+        </div>
+      </article>
+      <article class="festival-announcement past-festival" id="asian-food-beer-festival" aria-labelledby="asian-food-beer-title">
+        <div class="festival-announcement-date"><span>OCTOBER</span><strong>24</strong><span>2026 / SATURDAY</span></div>
+        <div class="festival-announcement-copy">
+          <p class="section-index">FROM THE STAGE / PAULY CEE</p>
+          <h3 id="asian-food-beer-title">BOSTON ASIAN FOOD<br>&amp; <em>BEER TASTING FESTIVAL</em></h3>
+          <p>Boston City Hall Plaza<br>1 City Hall Square, Boston, MA</p>
+        </div>
+      </article>
       <article class="past-event-story" id="thai-festival" aria-labelledby="thai-festival-title">
         <div class="past-event-feature">
         <video class="festival-background-video" autoplay muted loop playsinline preload="metadata" poster="assets/pauly-cee-thai-festival-noir-poster.jpg" aria-hidden="true" tabindex="-1">
@@ -368,6 +367,6 @@
     </video>
     <p class="format-note">FULL SESSION · STREAMING IN HD</p>
   </dialog>
-  <script src="script.js?v=20261009-1"></script>
+  <script src="script.js?v=20261107-player"></script>
 </body>
 </html>
