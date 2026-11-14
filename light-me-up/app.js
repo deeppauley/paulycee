@@ -1,4 +1,4 @@
-import {applyGiveawayCopy} from '../wristband/config.js';
+import {applyGiveawayCopy} from '../wristband/config.js?v=20261114';
 applyGiveawayCopy();
 const start=document.querySelector('#start'),exit=document.querySelector('#exit');
 const welcome=document.querySelector('#welcome'),signal=document.querySelector('#signal');

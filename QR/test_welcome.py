@@ -12,10 +12,10 @@ try:
     with sync_playwright() as p:
         b=p.chromium.launch(channel='msedge',headless=True)
         page=b.new_page(viewport={'width':390,'height':844},timezone_id='America/Los_Angeles')
-        page.clock.install(time=datetime(2026,10,24,22,59,59,tzinfo=timezone.utc))
+        page.clock.install(time=datetime(2026,11,15,10,59,59,tzinfo=timezone.utc))
         page.goto(f'http://127.0.0.1:{server.server_port}/QR/')
         page.wait_for_selector('#venue-welcome',state='visible')
-        assert 'WELCOME TO BOSTON CITY HALL PLAZA' in page.locator('#venue-welcome').inner_text()
+        assert 'WELCOME TO HARVARD SQUARE' in page.locator('#venue-welcome').inner_text()
         page.clock.fast_forward(1100)
         assert page.locator('#venue-welcome').is_hidden()
         page.reload();assert page.locator('#venue-welcome').is_hidden()

@@ -29,12 +29,12 @@ def run(root,production=False):
                 page.goto(base+'/QR/');page.locator('#wristband-link').wait_for()
                 assert page.locator('#main-link').get_attribute('href')=='https://paulycee.com'
                 assert page.locator('#tiktok-link').get_attribute('href')=='https://www.tiktok.com/@paulycee'
-                assert 'starting at 5 PM' in page.locator('#wristband-link').inner_text()
+                assert 'all night' in page.locator('#wristband-link').inner_text()
                 if not production:page.screenshot(path=str(SHOTS/'qr-mobile.png'),full_page=True)
                 page.locator('#wristband-link').click();assert page.url==base+'/light-me-up/'
                 page.reload();page.locator('#start').wait_for();page.evaluate('document.fonts.ready')
                 assert page.evaluate('document.fonts.check(\'900 30px Unbounded\')')
-                assert page.locator('#welcome').is_visible();assert 'starting at 5 PM' in page.locator('#welcome .offer').inner_text()
+                assert page.locator('#welcome').is_visible();assert 'all night' in page.locator('#welcome .offer').inner_text()
                 page.locator('#start').click();page.wait_for_timeout(100)
                 assert page.locator('#signal').is_visible();assert page.evaluate('calls.fullscreen')==1
                 assert page.evaluate('calls.wake')==1
@@ -52,7 +52,7 @@ def run(root,production=False):
                     for selector in ['.artist-logo','#signal h2','#signal .offer','.instruction','#exit']:
                         r=page.locator(selector).bounding_box()
                         assert r and r['x']>=0 and r['y']>=0 and r['x']+r['width']<=width+1 and r['y']+r['height']<=height+1,(width,height,selector,r)
-                    assert 'starting at 5 PM' in page.locator('#signal .offer').text_content()
+                    assert 'all night' in page.locator('#signal .offer').text_content()
                     if not production and width in (390,844):page.screenshot(path=str(SHOTS/f'glow-{width}x{height}.png'))
                 page.evaluate('testHidden=true;document.dispatchEvent(new Event(\'visibilitychange\'))');page.wait_for_timeout(50)
                 assert page.evaluate('calls.release')==1

@@ -1,4 +1,4 @@
-import {venueWelcome} from './welcome-config.js';
+import {venueWelcome} from './welcome-config.js?v=20261114';
 const banner=document.querySelector('#venue-welcome');
 banner.querySelector('p').textContent=venueWelcome.message;
 let expiry;

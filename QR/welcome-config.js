@@ -1,6 +1,6 @@
-// Boston is on daylight time on October 24. End at 7 PM America/New_York.
+// Tonight's Harvard Square event, through 6 AM Boston time the next morning.
 export const venueWelcome={
-  startsAt:'2026-10-24T00:00:00-04:00',
-  endsAt:'2026-10-24T19:00:00-04:00',
-  message:'WELCOME TO BOSTON CITY HALL PLAZA'
+  startsAt:'2026-11-14T00:00:00-05:00',
+  endsAt:'2026-11-15T06:00:00-05:00',
+  message:'WELCOME TO HARVARD SQUARE'
 };
