@@ -15,7 +15,8 @@ try:
             sent.append(json.loads(route.request.post_data));route.fulfill(json={'success':'true'})
         page.route('https://formsubmit.co/ajax/**',mail)
         page.goto(f'http://127.0.0.1:{s.server_port}/');page.evaluate('document.fonts.ready')
-        assert page.title()=='Trillium — Deep & Melodic House'
+        assert page.title()=='Trillium — Electronic Music, House & Techno'
+        assert page.locator('.hero-meta').inner_text().startswith('ELECTRONIC MUSIC / HOUSE / TECHNO')
         assert 'Bolus' not in page.locator('body').inner_text() and 'BOLUS' not in page.locator('body').inner_text()
         for w,h in [(320,740),(390,844),(844,390),(1440,1000)]:
             page.set_viewport_size({'width':w,'height':h})
