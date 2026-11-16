@@ -92,7 +92,7 @@ document.querySelectorAll('[data-open-player]').forEach(button => button.addEven
 }));
 
 document.querySelector('.kspace-link')?.addEventListener('click', () => {
-  trackEvent('select_content', { content_type: 'artist_link', item_id: 'dj_bolus' });
+  trackEvent('select_content', { content_type: 'artist_link', item_id: 'trillium' });
 });
 
 function closePlayer() {
