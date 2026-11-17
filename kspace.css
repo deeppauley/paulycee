@@ -18,4 +18,5 @@
 .kspace-copy>p:not(.kspace-pair){max-width:620px;margin:42px 0;color:#aebbc2;font-size:17px;line-height:1.75}
 .kspace-link{display:inline-flex;align-items:center;gap:48px;padding:18px 20px;border:1px solid #65cfff88;color:#edf5f7;font:500 11px var(--mono);letter-spacing:.12em;transition:.25s ease}
 .kspace-link:hover{background:#65cfff;color:#06101a}
+.kspace-bio{margin:36px 0;max-width:620px;color:#c2cdd4;font-size:16px;line-height:1.8}.kspace-bio p{margin:0 0 20px}.kspace-bio p:last-child{margin-bottom:0}
 @media(max-width:760px){.kspace-collab{min-height:0;padding:90px 24px;grid-template-columns:1fr;gap:70px}.kspace-orbit{width:min(76vw,360px);justify-self:center}.kspace-portrait{width:100%;justify-self:center}.kspace-copy h2{font-size:13vw}.kspace-copy>p:not(.kspace-pair){font-size:15px}.kspace-pair{margin-top:36px}}
