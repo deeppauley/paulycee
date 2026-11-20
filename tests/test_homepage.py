@@ -32,11 +32,15 @@ def run(root):
             b=p.chromium.launch(channel='msedge',headless=True)
             page=b.new_page(viewport={'width':390,'height':844});errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
             page.route('**/*.mp4',lambda r:r.abort())
+            page.route('https://www.tiktok.com/player/**',lambda r:r.fulfill(body='TikTok player placeholder'))
             page.goto(f'http://127.0.0.1:{server.server_port}/')
             page.wait_for_function('document.querySelector(\'.remix-audio\').readyState>=1')
             assert page.locator('.remix-track-select option').count()==2
             assert page.locator('.remix-details strong').inner_text()=='ANOTHER ONE'
-            assert page.locator('#upcoming .event-directory article').count()==1
+            assert page.locator('.upcoming-event').count()==0
+            assert page.locator('#past-events #harvard-night-market').count()==1
+            assert '7708361571906489614' in page.locator('#harvard-night-market iframe').get_attribute('src')
+            assert page.locator('#harvard-night-market a').get_attribute('href')=='https://www.tiktok.com/@paulycee/video/7708361571906489614'
             assert page.locator('#harvard-night-market time').get_attribute('datetime')=='2026-11-14T19:30:00-05:00'
             assert '7:30 PM' in page.locator('#harvard-night-market').inner_text()
             assert page.locator('#past-events #halloween-event .halloween-photo').count()==1
@@ -68,6 +72,7 @@ def run(root):
                     page.locator('.remix-player').screenshot(path=str(SHOTS/f'player-{width}.png'))
                     page.locator('#halloween-event').screenshot(path=str(SHOTS/f'halloween-{width}.png'))
                     page.locator('#asian-food-beer-festival').screenshot(path=str(SHOTS/f'beer-festival-{width}.png'))
+                    page.locator('#harvard-night-market').screenshot(path=str(SHOTS/f'night-market-{width}.png'))
             assert not errors,errors
             b.close();print(root.name+': PASS ordered two-track playlist, playback/seek/auto-next, pause, November 14 date/time/schema, past events/photo and mobile/desktop layout')
     finally:server.shutdown();server.server_close()
